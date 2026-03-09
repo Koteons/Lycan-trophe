@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Connexion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--night:#050810;--deep:#080d1a;--fog:#0b1228;--accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;--text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;--error:#e05555;--success:#4aff80;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:crosshair;}
+    .bg{position:fixed;inset:0;z-index:0;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 60%);}
+    .moon{position:absolute;top:6%;right:12%;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8f0ff,#c2d4f0 50%,#8aabcf);box-shadow:0 0 30px rgba(180,210,255,.4),0 0 80px rgba(100,160,255,.2);animation:moonPulse 6s infinite ease-in-out;}
+    @keyframes moonPulse{0%,100%{box-shadow:0 0 30px rgba(180,210,255,.4),0 0 80px rgba(100,160,255,.2)}50%{box-shadow:0 0 50px rgba(180,210,255,.6),0 0 120px rgba(100,160,255,.35)}}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+    .trees{position:absolute;bottom:0;width:100%;}
+    .fog{position:absolute;bottom:10%;left:-10%;right:-10%;height:60px;background:linear-gradient(to right,transparent,rgba(20,40,80,.25) 30%,rgba(20,40,80,.25) 70%,transparent);filter:blur(18px);animation:fogDrift 14s infinite ease-in-out alternate;}
+    @keyframes fogDrift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}
+    .card-wrap{position:relative;z-index:10;width:100%;max-width:440px;padding:1rem;animation:cardReveal .8s ease forwards;}
+    @keyframes cardReveal{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+    .card{background:linear-gradient(160deg,rgba(8,13,26,.97),rgba(11,18,40,.95));border:1px solid rgba(74,111,165,.25);padding:2.8rem 2.5rem 2.5rem;box-shadow:0 0 60px rgba(10,20,50,.8);position:relative;}
+    .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .logo-area{text-align:center;margin-bottom:2rem;}
+    .logo-title{font-family:'Cinzel Decorative',serif;font-size:2.4rem;font-weight:900;letter-spacing:.3em;color:var(--moon);text-shadow:0 0 20px rgba(180,210,255,.4);line-height:1;margin-bottom:.4rem;}
+    .logo-sub{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.4em;text-transform:uppercase;color:var(--accent);}
+    .tabs{display:flex;margin-bottom:2rem;border-bottom:1px solid rgba(74,111,165,.2);}
+    .tab{flex:1;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);padding:.8rem;text-align:center;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .3s;background:none;border-top:none;border-left:none;border-right:none;}
+    .tab.active{color:var(--moon);border-bottom-color:var(--accent);}
+    .form{display:none;flex-direction:column;gap:1.2rem;}
+    .form.active{display:flex;}
+    .field{display:flex;flex-direction:column;gap:.5rem;}
+    .field label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);}
+    .field input{background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.95rem;padding:.85rem 1rem;outline:none;transition:border-color .3s;width:100%;}
+    .field input::placeholder{color:var(--text-dim);}
+    .field input:focus{border-color:rgba(74,111,165,.7);box-shadow:0 0 15px rgba(74,111,165,.15);}
+    .btn-submit{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.2em;padding:1rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);box-shadow:0 0 20px rgba(74,111,165,.3);transition:all .3s;margin-top:.5rem;width:100%;}
+    .btn-submit:hover{box-shadow:0 0 35px rgba(74,111,165,.6);transform:translateY(-1px);}
+    .btn-submit:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+    .msg{font-size:.78rem;padding:.7rem 1rem;text-align:center;font-family:'Cinzel',serif;display:none;}
+    .msg.error{background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.3);color:var(--error);display:block;}
+    .msg.success{background:rgba(74,255,128,.08);border:1px solid rgba(74,255,128,.25);color:var(--success);display:block;}
+    .back-link{display:block;text-align:center;margin-top:1.5rem;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--text-dim);text-decoration:none;transition:color .3s;}
+    .back-link:hover{color:var(--silver);}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(212,224,240,.3);border-top-color:var(--moon);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .success-screen{display:none;text-align:center;padding:1rem 0;}
+    .success-screen.show{display:block;}
+    .success-icon{font-size:3rem;margin-bottom:1rem;}
+    .success-title{font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:var(--moon);margin-bottom:.5rem;}
+    .success-text{font-size:.85rem;color:var(--text-dim);margin-bottom:1.5rem;line-height:1.6;}
+    .btn-play{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.2em;padding:1rem 2rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);transition:all .3s;text-decoration:none;display:inline-block;}
+    .btn-play:hover{box-shadow:0 0 35px rgba(74,111,165,.6);}
+  </style>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="moon"></div>
+  <div class="fog"></div>
+  <svg class="trees" viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#0a1020" opacity="0.7"><polygon points="100,200 130,100 160,200"/><polygon points="240,200 275,80 310,200"/><polygon points="420,200 455,90 490,200"/><polygon points="600,200 635,70 670,200"/><polygon points="780,200 815,85 850,200"/><polygon points="960,200 995,75 1030,200"/><polygon points="1150,200 1185,95 1220,200"/><polygon points="1330,200 1365,80 1400,200"/></g>
+    <g fill="#06090f"><polygon points="0,200 40,80 80,200"/><polygon points="160,200 205,60 250,200"/><polygon points="320,200 365,70 410,200"/><polygon points="500,200 545,55 590,200"/><polygon points="680,200 725,65 770,200"/><polygon points="860,200 905,50 950,200"/><polygon points="1040,200 1085,68 1130,200"/><polygon points="1240,200 1285,60 1330,200"/><polygon points="1390,200 1440,75 1440,200"/></g>
+    <rect x="0" y="185" width="1440" height="15" fill="#06090f"/>
+  </svg>
+</div>
+
+<div class="card-wrap">
+  <div class="card">
+    <div class="logo-area">
+      <div class="logo-title">LYCAN</div>
+      <div class="logo-sub">Le Loup-Garou en ligne</div>
+    </div>
+
+    <div class="success-screen" id="successScreen">
+      <div class="success-icon">🐺</div>
+      <div class="success-title">Bienvenue !</div>
+      <div class="success-text" id="successText">La nuit t'attend...</div>
+      <a href="lobby.html" class="btn-play">Entrer dans le village</a>
+    </div>
+
+    <div id="mainContent">
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('login')">Connexion</button>
+        <button class="tab" onclick="switchTab('register')">Inscription</button>
+      </div>
+
+      <form class="form active" id="loginForm" onsubmit="handleLogin(event)">
+        <div id="loginMsg"></div>
+        <div class="field"><label>Pseudo ou Email</label><input type="text" id="loginEmail" placeholder="ton@email.com" required/></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="loginPassword" placeholder="••••••••" required/></div>
+        <button type="submit" class="btn-submit" id="loginBtn">Se connecter</button>
+      </form>
+
+      <form class="form" id="registerForm" onsubmit="handleRegister(event)">
+        <div id="registerMsg"></div>
+        <div class="field"><label>Pseudo</label><input type="text" id="regUsername" placeholder="LoupSolitaire" required minlength="3" maxlength="20"/></div>
+        <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="ton@email.com" required/></div>
+        <div class="field"><label>Mot de passe</label><input type="password" id="regPassword" placeholder="Min. 8 caractères" required minlength="8"/></div>
+        <div class="field"><label>Confirmer</label><input type="password" id="regConfirm" placeholder="••••••••" required/></div>
+        <button type="submit" class="btn-submit" id="registerBtn">Créer mon compte</button>
+      </form>
+    </div>
+
+    <a href="index.html" class="back-link">← Retour à l'accueil</a>
+  </div>
+</div>
+
+<script>
+  const SURL = 'https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY = 'sb_publishable_5s9soZN5O0Mp4nuWHlXXYA_Xv979vZj';
+  const db = supabase.createClient(SURL, SKEY);
+
+  // Stars
+  const sc=document.getElementById('stars');
+  for(let i=0;i<120;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*80}%;left:${Math.random()*100}%;--op:${Math.random()*.5+.3};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+  window.addEventListener('load',()=>{
+    const u=JSON.parse(localStorage.getItem('lycan_user')||'null');
+    if(u) showSuccess('Déjà connecté, '+u.username+' !<br/>Prêt à jouer ?');
+  });
+
+  function switchTab(tab){
+    document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
+    document.getElementById('loginForm').classList.toggle('active',tab==='login');
+    document.getElementById('registerForm').classList.toggle('active',tab==='register');
+    document.getElementById('loginMsg').innerHTML='';
+    document.getElementById('registerMsg').innerHTML='';
+  }
+
+  function showMsg(id,type,text){const el=document.getElementById(id);el.className='msg '+type;el.innerHTML=text;}
+
+  function hash(pwd){return btoa(unescape(encodeURIComponent(pwd)));}
+
+  async function handleLogin(e){
+    e.preventDefault();
+    const id=document.getElementById('loginEmail').value.trim();
+    const pwd=document.getElementById('loginPassword').value;
+    const btn=document.getElementById('loginBtn');
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Connexion...';
+    try{
+      const{data,error}=await db.from('players').select('*').or(`username.eq.${id},email.eq.${id}`).maybeSingle();
+      if(!data){showMsg('loginMsg','error','⚠ Joueur introuvable.');btn.disabled=false;btn.innerHTML='Se connecter';return;}
+      if(data.password!==hash(pwd)){showMsg('loginMsg','error','⚠ Mot de passe incorrect.');btn.disabled=false;btn.innerHTML='Se connecter';return;}
+      await db.from('players').update({last_seen:new Date().toISOString()}).eq('id',data.id);
+      localStorage.setItem('lycan_user',JSON.stringify(data));
+      btn.innerHTML='<span class="spinner"></span>Bienvenue '+data.username+' !';
+      await delay(800);
+      showSuccess('Connexion réussie !<br/>Bonne chasse, '+data.username+'...');
+    }catch(err){showMsg('loginMsg','error','⚠ Erreur réseau. Réessaie.');btn.disabled=false;btn.innerHTML='Se connecter';}
+  }
+
+  async function handleRegister(e){
+    e.preventDefault();
+    const username=document.getElementById('regUsername').value.trim();
+    const email=document.getElementById('regEmail').value.trim();
+    const pwd=document.getElementById('regPassword').value;
+    const confirm=document.getElementById('regConfirm').value;
+    const btn=document.getElementById('registerBtn');
+    if(pwd!==confirm){showMsg('registerMsg','error','⚠ Les mots de passe ne correspondent pas');return;}
+    btn.disabled=true;btn.innerHTML='<span class="spinner"></span>Création...';
+    try{
+      const{data:ex}=await db.from('players').select('id').or(`username.eq.${username},email.eq.${email}`).maybeSingle();
+      if(ex){showMsg('registerMsg','error','⚠ Pseudo ou email déjà utilisé.');btn.disabled=false;btn.innerHTML='Créer mon compte';return;}
+      const{data,error}=await db.from('players').insert({username,email,password:hash(pwd),coins:150,gold:320,wins:0,games:0,points:0,avatar:'🐺'}).select().single();
+      if(error)throw error;
+      localStorage.setItem('lycan_user',JSON.stringify(data));
+      showSuccess('Compte créé !<br/>Bienvenue parmi nous, '+username+'...');
+    }catch(err){showMsg('registerMsg','error','⚠ '+(err.message||'Erreur. Réessaie.'));btn.disabled=false;btn.innerHTML='Créer mon compte';}
+  }
+
+  function showSuccess(text){
+    document.getElementById('successText').innerHTML=text;
+    document.getElementById('mainContent').style.display='none';
+    document.querySelector('.back-link').style.display='none';
+    document.getElementById('successScreen').classList.add('show');
+  }
+
+  function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
