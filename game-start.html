@@ -651,10 +651,20 @@ async function loadPlayers(){
 }
 
 async function detectMyRole(){
-  const{data}=await db.from('lobby_players').select('role').eq('lobby_id',lobbyId).eq('username',myUsername).single();
-  const roleId=data?.role||'villageois';
-  myRole=ROLES_DATA[roleId]||ROLES_DATA['villageois'];
-  myRole.id=roleId;
+  // Réessayer jusqu'à 3 fois si le rôle n'est pas encore assigné
+  for(let attempt=0;attempt<3;attempt++){
+    const{data}=await db.from('lobby_players').select('role').eq('lobby_id',lobbyId).eq('username',myUsername).single();
+    const roleId=data?.role;
+    if(roleId&&ROLES_DATA[roleId]){
+      myRole=ROLES_DATA[roleId];
+      myRole.id=roleId;
+      return;
+    }
+    if(attempt<2) await new Promise(r=>setTimeout(r,1500));
+  }
+  // Fallback villageois si rien trouvé
+  myRole=ROLES_DATA['villageois'];
+  myRole.id='villageois';
 }
 
 // ══ RENDER PLAYERS — DISPOSITION EN CERCLE ═══════════
@@ -778,10 +788,14 @@ function adjustBrightness(hex,pct){
 
 // ══ ROLE REVEAL ════════════════════════════════════════
 function showRoleReveal(){
-  if(!myRole) return;
-  document.getElementById('roleEmoji').textContent=myRole.emoji;
-  document.getElementById('roleNameBig').textContent=myRole.name;
-  document.getElementById('roleDescBig').textContent=myRole.desc;
+  if(!myRole){
+    // myRole pas encore chargé — réessayer dans 500ms
+    setTimeout(showRoleReveal,500);
+    return;
+  }
+  document.getElementById('roleEmoji').textContent=myRole.emoji||'❓';
+  document.getElementById('roleNameBig').textContent=myRole.name||'Inconnu';
+  document.getElementById('roleDescBig').textContent=myRole.desc||'';
   document.getElementById('roleReveal').classList.add('show');
 }
 function hideRole(){
