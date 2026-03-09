@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Modération</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--night:#050810;--deep:#080d1a;--fog:#0b1228;--accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;--text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;--gold:#f5c842;--success:#4aff80;--error:#e05555;--warn:#f59e0b;
+      --role-creator:#ff6b35;--role-admin:#e05555;--role-mod:#a855f7;--role-benevole:#22d3ee;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;cursor:crosshair;}
+    .bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 60%);}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+
+    /* LOGIN */
+    .login-screen{position:relative;z-index:10;display:flex;align-items:center;justify-content:center;min-height:100vh;}
+    .login-card{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(168,85,247,.25);padding:2.5rem;width:100%;max-width:400px;position:relative;animation:fadeUp .6s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--role-mod),transparent);}
+    .login-title{font-family:'Cinzel Decorative',serif;font-size:1.4rem;color:var(--moon);text-align:center;margin-bottom:.2rem;}
+    .login-sub{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.3em;color:var(--role-mod);text-align:center;margin-bottom:2rem;}
+    .field{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem;}
+    .field label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--role-mod);}
+    .field input{background:rgba(5,8,16,.8);border:1px solid rgba(168,85,247,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.95rem;padding:.8rem 1rem;outline:none;transition:border-color .3s;}
+    .field input:focus{border-color:rgba(168,85,247,.6);}
+    .btn-login{font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.2em;padding:.9rem;border:1px solid rgba(168,85,247,.4);background:linear-gradient(135deg,rgba(168,85,247,.2),rgba(168,85,247,.08));color:var(--role-mod);cursor:pointer;width:100%;transition:all .3s;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);}
+    .btn-login:hover{background:linear-gradient(135deg,rgba(168,85,247,.35),rgba(168,85,247,.15));color:var(--moon);}
+    .login-err{font-family:'Cinzel',serif;font-size:.7rem;color:var(--error);text-align:center;margin-top:.8rem;min-height:1.2rem;}
+
+    /* PANEL */
+    .mod-panel{display:none;position:relative;z-index:10;}
+    .mod-panel.show{display:block;}
+    .topbar{background:linear-gradient(to bottom,rgba(5,8,16,.98),rgba(5,8,16,.9));border-bottom:1px solid rgba(168,85,247,.2);padding:.8rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+    .topbar-logo{font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--moon);letter-spacing:.2em;}
+    .topbar-badge{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--role-mod);border:1px solid rgba(168,85,247,.3);padding:.2rem .8rem;}
+    .btn-logout{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(168,85,247,.3);background:none;color:var(--role-mod);cursor:pointer;transition:all .2s;}
+    .btn-logout:hover{background:rgba(168,85,247,.1);}
+    .content{max-width:1200px;margin:0 auto;padding:2rem;}
+    .page-title{font-family:'Cinzel Decorative',serif;font-size:1.6rem;color:var(--moon);margin-bottom:.3rem;}
+    .page-sub{font-size:.8rem;color:var(--text-dim);margin-bottom:2rem;}
+
+    /* TABS */
+    .tabs{display:flex;border-bottom:1px solid rgba(168,85,247,.2);margin-bottom:2rem;}
+    .tab{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;padding:.8rem 1.5rem;border:none;background:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .3s;}
+    .tab.active{color:var(--moon);border-bottom-color:var(--role-mod);}
+    .tab:hover:not(.active){color:var(--silver);}
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;animation:fadeUp .3s ease;}
+
+    /* STATS */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+    .stat-card{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.18);padding:1.2rem;text-align:center;}
+    .stat-card.warn{border-color:rgba(245,158,11,.25);}
+    .stat-card.danger{border-color:rgba(224,85,85,.25);}
+    .stat-val{font-family:'Cinzel Decorative',serif;font-size:1.8rem;color:var(--moon);margin-bottom:.3rem;}
+    .stat-val.warn{color:var(--warn);}
+    .stat-val.danger{color:var(--error);}
+    .stat-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);}
+
+    /* SECTION TITLE */
+    .section-title{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.8rem;}
+    .section-title::before{content:'';display:block;width:22px;height:1px;background:var(--accent);}
+
+    /* REPORT CARD */
+    .report-card{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.12);padding:1.2rem;margin-bottom:.6rem;transition:border-color .2s;}
+    .report-card:hover{border-color:rgba(74,111,165,.3);}
+    .report-card.pending{border-left:3px solid var(--warn);}
+    .report-card.resolved{border-left:3px solid var(--success);opacity:.7;}
+    .report-card.dismissed{border-left:3px solid var(--text-dim);opacity:.5;}
+    .report-card.actioned{border-left:3px solid var(--error);}
+    .report-top{display:flex;align-items:flex-start;gap:1rem;margin-bottom:.8rem;}
+    .report-status-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:.3rem;}
+    .report-status-dot.pending{background:var(--warn);box-shadow:0 0 6px var(--warn);}
+    .report-status-dot.resolved{background:var(--success);}
+    .report-status-dot.dismissed{background:var(--text-dim);}
+    .report-status-dot.actioned{background:var(--error);box-shadow:0 0 6px var(--error);}
+    .report-main{flex:1;}
+    .report-names{font-family:'Cinzel',serif;font-size:.78rem;color:var(--silver);margin-bottom:.3rem;}
+    .report-names .reporter{color:var(--text-dim);font-size:.7rem;}
+    .report-reason{display:inline-block;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;padding:.2rem .6rem;border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.06);color:var(--warn);margin-bottom:.4rem;}
+    .report-reason.cheat{border-color:rgba(224,85,85,.4);background:rgba(224,85,85,.08);color:var(--error);}
+    .report-details{font-size:.75rem;color:var(--text-dim);line-height:1.5;font-style:italic;}
+    .report-meta{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.1em;color:var(--text-dim);margin-top:.4rem;}
+    .report-actions{display:flex;gap:.4rem;flex-wrap:wrap;}
+    .btn-mod{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.08em;padding:.3rem .7rem;border:1px solid;cursor:pointer;background:none;transition:all .2s;}
+    .btn-mod-green{border-color:rgba(74,255,128,.3);color:var(--success);}
+    .btn-mod-green:hover{background:rgba(74,255,128,.1);}
+    .btn-mod-red{border-color:rgba(224,85,85,.3);color:var(--error);}
+    .btn-mod-red:hover{background:rgba(224,85,85,.1);}
+    .btn-mod-gray{border-color:rgba(74,111,165,.25);color:var(--text-dim);}
+    .btn-mod-gray:hover{background:rgba(74,111,165,.08);color:var(--silver);}
+    .btn-mod-warn{border-color:rgba(245,158,11,.3);color:var(--warn);}
+    .btn-mod-warn:hover{background:rgba(245,158,11,.08);}
+
+    /* FILTERS */
+    .filters{display:flex;gap:.7rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+    .filter-btn{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;padding:.4rem .9rem;border:1px solid rgba(74,111,165,.2);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+    .filter-btn.active{border-color:rgba(168,85,247,.5);color:var(--role-mod);background:rgba(168,85,247,.08);}
+    .filter-btn:hover:not(.active){color:var(--silver);}
+    .search-input{background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.85rem;padding:.5rem .9rem;outline:none;transition:border-color .3s;flex:1;min-width:200px;}
+    .search-input:focus{border-color:rgba(74,111,165,.5);}
+
+    /* BANNED PLAYERS */
+    .ban-row{display:flex;align-items:center;gap:1rem;padding:.9rem;background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(224,85,85,.12);margin-bottom:.4rem;}
+    .ban-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--silver);flex:1;}
+    .ban-reason{font-size:.7rem;color:var(--text-dim);flex:1;}
+    .ban-date{font-family:'Cinzel',serif;font-size:.62rem;color:var(--text-dim);}
+
+    /* ACTION MODAL */
+    .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(5,8,16,.9);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;}
+    .modal-overlay.show{display:flex;animation:fadeUp .3s ease;}
+    .modal-card{background:linear-gradient(160deg,rgba(8,13,26,.99),rgba(11,18,40,.97));border:1px solid rgba(168,85,247,.25);padding:2rem;width:100%;max-width:460px;position:relative;}
+    .modal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--role-mod),transparent);}
+    .modal-close{position:absolute;top:1rem;right:1rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--text-dim);cursor:pointer;padding:.3rem .6rem;border:1px solid rgba(74,111,165,.2);background:none;}
+    .modal-title{font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--moon);margin-bottom:.3rem;}
+    .modal-sub{font-size:.78rem;color:var(--text-dim);margin-bottom:1.2rem;}
+    .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.2rem;}
+    .action-option{padding:1rem;border:1px solid rgba(74,111,165,.15);cursor:pointer;transition:all .3s;background:rgba(74,111,165,.03);text-align:center;}
+    .action-option:hover{border-color:rgba(74,111,165,.35);background:rgba(74,111,165,.08);}
+    .action-option.selected{border-color:rgba(168,85,247,.5);background:rgba(168,85,247,.1);}
+    .action-option.danger:hover{border-color:rgba(224,85,85,.4);background:rgba(224,85,85,.08);}
+    .action-option.danger.selected{border-color:rgba(224,85,85,.5);background:rgba(224,85,85,.1);}
+    .action-icon{font-size:1.4rem;margin-bottom:.3rem;}
+    .action-name{font-family:'Cinzel',serif;font-size:.7rem;color:var(--silver);}
+    .modal-note-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem;}
+    .modal-textarea{width:100%;background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.85rem;padding:.7rem 1rem;outline:none;resize:none;height:70px;margin-bottom:1rem;}
+    .btn-confirm{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.15em;padding:.85rem;border:1px solid rgba(168,85,247,.4);background:rgba(168,85,247,.1);color:var(--role-mod);cursor:pointer;transition:all .3s;width:100%;}
+    .btn-confirm:hover{background:rgba(168,85,247,.2);color:var(--moon);}
+
+    /* EMPTY STATE */
+    .empty-state{text-align:center;padding:3rem;font-family:'Cinzel',serif;font-size:.78rem;color:var(--text-dim);}
+    .empty-icon{font-size:2.5rem;margin-bottom:.8rem;}
+
+    .spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(74,111,165,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{position:fixed;bottom:2rem;right:2rem;z-index:999;background:var(--fog);border:1px solid rgba(74,111,165,.3);padding:.9rem 1.4rem;font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);display:none;}
+    .toast.show{display:block;}
+    .realtime-dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);display:inline-block;animation:blink 2s infinite;margin-right:.4rem;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    @media(max-width:800px){.stats-grid{grid-template-columns:repeat(2,1fr);}.action-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+<div class="bg"><div class="bg-sky"></div><div class="stars" id="stars"></div></div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-card">
+    <div class="login-title">LYCAN</div>
+    <div class="login-sub">🛡 ESPACE MODÉRATION</div>
+    <div class="field">
+      <label>Mot de passe modération</label>
+      <input type="password" id="modPwd" placeholder="••••••••••••" onkeydown="if(event.key==='Enter')tryLogin()"/>
+    </div>
+    <button class="btn-login" onclick="tryLogin()">Accéder à la modération</button>
+    <div class="login-err" id="loginErr"></div>
+    <div style="text-align:center;margin-top:1.5rem">
+      <a href="lobby.html" style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;color:var(--text-dim);text-decoration:none">← Retour au lobby</a>
+    </div>
+  </div>
+</div>
+
+<!-- MOD PANEL -->
+<div class="mod-panel" id="modPanel">
+  <div class="topbar">
+    <div class="topbar-logo">LYCAN MODÉRATION</div>
+    <div style="display:flex;align-items:center;gap:.5rem">
+      <span class="realtime-dot"></span>
+      <span class="topbar-badge">🛡 MOD</span>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <a href="admin.html" style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(224,85,85,.3);background:none;color:#e05555;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(224,85,85,.1)'" onmouseout="this.style.background='none'">⚔️ Admin</a>
+      <button class="btn-logout" onclick="logoutMod()">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="page-title">Centre de modération</div>
+    <div class="page-sub" id="modSub">Signalements et sanctions en temps réel</div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('reports',this)">🚩 Signalements</button>
+      <button class="tab" onclick="switchTab('sanctions',this)">⚖️ Sanctions</button>
+      <button class="tab" onclick="switchTab('banned',this)">🚫 Bannis</button>
+      <button class="tab" onclick="switchTab('logs',this)">📋 Journal</button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card warn"><div class="stat-val warn" id="statPending">—</div><div class="stat-label">En attente</div></div>
+      <div class="stat-card danger"><div class="stat-val danger" id="statTotal">—</div><div class="stat-label">Total signalements</div></div>
+      <div class="stat-card"><div class="stat-val" id="statResolved">—</div><div class="stat-label">Résolus</div></div>
+      <div class="stat-card danger"><div class="stat-val danger" id="statBanned">—</div><div class="stat-label">Joueurs bannis</div></div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div class="tab-panel active" id="tab-reports">
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterReports('all',this)">Tous</button>
+        <button class="filter-btn" onclick="filterReports('pending',this)">⏳ En attente</button>
+        <button class="filter-btn" onclick="filterReports('actioned',this)">⚡ Sanctionné</button>
+        <button class="filter-btn" onclick="filterReports('resolved',this)">✓ Résolu</button>
+        <button class="filter-btn" onclick="filterReports('dismissed',this)">✗ Rejeté</button>
+        <input type="text" class="search-input" id="reportSearch" placeholder="Rechercher un joueur..." oninput="searchReports()"/>
+      </div>
+      <div id="reportsList">
+        <div class="empty-state"><div class="spinner"></div> Chargement...</div>
+      </div>
+    </div>
+
+    <!-- SANCTIONS TAB -->
+    <div class="tab-panel" id="tab-sanctions">
+      <div class="section-title">Sanctionner manuellement un joueur</div>
+      <div style="background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1.5rem;max-width:500px;">
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem">Pseudo du joueur</div>
+          <input type="text" id="sanctionTarget" class="search-input" style="width:100%" placeholder="LoupSolitaire"/>
+        </div>
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem">Type de sanction</div>
+          <div class="action-grid" id="sanctionTypePicker">
+            <div class="action-option" data-type="warn" onclick="selectSanctionType(this)"><div class="action-icon">⚠️</div><div class="action-name">Avertissement</div></div>
+            <div class="action-option" data-type="mute" onclick="selectSanctionType(this)"><div class="action-icon">🔇</div><div class="action-name">Muet (24h)</div></div>
+            <div class="action-option danger" data-type="kick" onclick="selectSanctionType(this)"><div class="action-icon">👢</div><div class="action-name">Kick</div></div>
+            <div class="action-option danger" data-type="ban" onclick="selectSanctionType(this)"><div class="action-icon">🚫</div><div class="action-name">Bannissement</div></div>
+          </div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <div style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem">Raison</div>
+          <textarea id="sanctionReason" class="modal-textarea" style="width:100%;margin:0" placeholder="Précise la raison de la sanction..."></textarea>
+        </div>
+        <button class="btn-confirm" onclick="applySanctionManual()">⚖️ Appliquer la sanction</button>
+      </div>
+
+      <div class="section-title" style="margin-top:2rem">Sanctions récentes</div>
+      <div id="recentSanctions">
+        <div class="empty-state"><div class="spinner"></div> Chargement...</div>
+      </div>
+    </div>
+
+    <!-- BANNED TAB -->
+    <div class="tab-panel" id="tab-banned">
+      <div class="section-title">Joueurs bannis</div>
+      <div id="bannedList">
+        <div class="empty-state"><div class="spinner"></div> Chargement...</div>
+      </div>
+    </div>
+
+    <!-- LOGS TAB -->
+    <div class="tab-panel" id="tab-logs">
+      <div class="section-title">Journal des actions de modération</div>
+      <div style="background:var(--deep);border:1px solid rgba(74,111,165,.15);padding:1rem;font-family:'Cinzel',serif;font-size:.68rem;color:var(--text-dim);max-height:400px;overflow-y:auto;line-height:2.2;" id="modLogBox">
+        <div style="color:var(--role-mod)">Session modération démarrée.</div>
+      </div>
+    </div>
+  </div><!-- /content -->
+</div><!-- /mod-panel -->
+
+<!-- ACTION MODAL -->
+<div class="modal-overlay" id="actionModal" onclick="closeActionModal(event)">
+  <div class="modal-card">
+    <button class="modal-close" onclick="document.getElementById('actionModal').classList.remove('show')">✕</button>
+    <div class="modal-title" id="actionModalTitle">Action sur le signalement</div>
+    <div class="modal-sub" id="actionModalSub">Choisir une action</div>
+    <div class="action-grid" id="actionGrid">
+      <div class="action-option selected" data-action="resolved" onclick="selectAction(this)"><div class="action-icon">✅</div><div class="action-name">Résolu</div></div>
+      <div class="action-option" data-action="dismissed" onclick="selectAction(this)"><div class="action-icon">🗑️</div><div class="action-name">Rejeter</div></div>
+      <div class="action-option danger" data-action="warn" onclick="selectAction(this)"><div class="action-icon">⚠️</div><div class="action-name">Avertir</div></div>
+      <div class="action-option danger" data-action="ban" onclick="selectAction(this)"><div class="action-icon">🚫</div><div class="action-name">Bannir</div></div>
+    </div>
+    <div class="modal-note-label">Note interne (optionnel)</div>
+    <textarea class="modal-textarea" id="actionNote" placeholder="Note visible uniquement par l'équipe..."></textarea>
+    <button class="btn-confirm" onclick="confirmAction()">Confirmer l'action</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY='sb_publishable_5s9soZN5O0Mp4nuWHlXXYA_Xv979vZj';
+  const MOD_PWD='zetbEp-hosne6-wofced';
+  const db=supabase.createClient(SURL,SKEY);
+
+  let allReports=[];
+  let allSanctions=[];
+  let modLogs=[];
+  let currentReportId=null;
+  let selectedAction='resolved';
+  let selectedSanctionType='warn';
+  const modUser=JSON.parse(localStorage.getItem('lycan_user')||'{"username":"Modérateur"}');
+
+  // Stars
+  const sc=document.getElementById('stars');
+  for(let i=0;i<60;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*80}%;left:${Math.random()*100}%;--op:${Math.random()*.4+.2};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+  function tryLogin(){
+    const pwd=document.getElementById('modPwd').value;
+    if(pwd===MOD_PWD){
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('modPanel').classList.add('show');
+      loadAll();
+    }else{
+      document.getElementById('loginErr').textContent='⚠ Mot de passe incorrect';
+      setTimeout(()=>document.getElementById('loginErr').textContent='',3000);
+    }
+  }
+
+  function logoutMod(){
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('modPanel').classList.remove('show');
+    document.getElementById('modPwd').value='';
+  }
+
+  function switchTab(name,btn){
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  async function loadAll(){
+    document.getElementById('modSub').textContent='Mise à jour : '+new Date().toLocaleTimeString('fr-FR');
+
+    // Load reports
+    const{data:reports}=await db.from('reports').select('*').order('created_at',{ascending:false});
+    allReports=reports||[];
+
+    // Load sanctions
+    const{data:sanctions}=await db.from('sanctions').select('*').order('created_at',{ascending:false});
+    allSanctions=sanctions||[];
+
+    // Stats
+    const pending=allReports.filter(r=>r.status==='pending').length;
+    const actioned=allReports.filter(r=>r.status==='actioned').length;
+    const resolved=allReports.filter(r=>r.status==='resolved'||r.status==='dismissed').length;
+    const banned=allSanctions.filter(s=>s.type==='ban').length;
+
+    document.getElementById('statPending').textContent=pending;
+    document.getElementById('statTotal').textContent=allReports.length;
+    document.getElementById('statResolved').textContent=resolved;
+    document.getElementById('statBanned').textContent=banned;
+
+    renderReports(allReports);
+    renderSanctions(allSanctions);
+    renderBanned(allSanctions.filter(s=>s.type==='ban'));
+  }
+
+  function reasonClass(reason){
+    if(!reason)return'';
+    const r=reason.toLowerCase();
+    if(r.includes('triche')||r.includes('cheat'))return'cheat';
+    return'';
+  }
+
+  function statusLabel(status){
+    return{pending:'⏳ En attente',resolved:'✅ Résolu',dismissed:'✗ Rejeté',actioned:'⚡ Sanctionné'}[status]||status;
+  }
+
+  function renderReports(reports){
+    const container=document.getElementById('reportsList');
+    if(!reports||reports.length===0){
+      container.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div>Aucun signalement pour l\'instant.</div>';
+      return;
+    }
+    container.innerHTML='';
+    reports.forEach(r=>{
+      const card=document.createElement('div');
+      card.className='report-card '+r.status;
+      card.dataset.reported=(r.reported||'').toLowerCase();
+      card.dataset.reporter=(r.reporter||'').toLowerCase();
+      const d=r.created_at?new Date(r.created_at).toLocaleString('fr-FR'):'—';
+      card.innerHTML=`
+        <div class="report-top">
+          <div class="report-status-dot ${r.status}"></div>
+          <div class="report-main">
+            <div class="report-names">
+              🎯 <strong>${r.reported||'—'}</strong>
+              <span class="reporter"> · signalé par ${r.reporter||'—'}</span>
+              ${r.game_name?`<span class="reporter"> · dans "${r.game_name}"</span>`:''}
+            </div>
+            <div class="report-reason ${reasonClass(r.reason)}">${r.reason||'Raison non précisée'}</div>
+            ${r.details?`<div class="report-details">"${r.details}"</div>`:''}
+            <div class="report-meta">${d} · ${statusLabel(r.status)}${r.mod_note?` · Note : ${r.mod_note}`:''}</div>
+          </div>
+        </div>
+        <div class="report-actions">
+          ${r.status==='pending'?`
+            <button class="btn-mod btn-mod-green" onclick="openAction('${r.id}','${r.reported}')">⚖️ Traiter</button>
+            <button class="btn-mod btn-mod-gray" onclick="quickAction('${r.id}','dismissed')">✗ Rejeter</button>
+          `:`
+            <button class="btn-mod btn-mod-gray" onclick="openAction('${r.id}','${r.reported}')">✏️ Modifier</button>
+          `}
+          <button class="btn-mod btn-mod-red" onclick="deleteReport('${r.id}')">🗑 Supprimer</button>
+        </div>`;
+      container.appendChild(card);
+    });
+  }
+
+  function renderSanctions(sanctions){
+    const container=document.getElementById('recentSanctions');
+    if(!sanctions||sanctions.length===0){container.innerHTML='<div class="empty-state"><div class="empty-icon">⚖️</div>Aucune sanction appliquée.</div>';return;}
+    container.innerHTML='';
+    sanctions.slice(0,20).forEach(s=>{
+      const d=s.created_at?new Date(s.created_at).toLocaleDateString('fr-FR'):'—';
+      const typeIcon={warn:'⚠️',mute:'🔇',kick:'👢',ban:'🚫'}[s.type]||'⚖️';
+      const div=document.createElement('div');
+      div.style.cssText='display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.08);margin-bottom:.3rem;';
+      div.innerHTML=`
+        <span style="font-size:1.2rem">${typeIcon}</span>
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--silver)">${s.target||'—'}</div>
+          <div style="font-size:.7rem;color:var(--text-dim)">${s.reason||'—'} · par ${s.mod||'—'}</div>
+        </div>
+        <div style="font-family:'Cinzel',serif;font-size:.62rem;color:var(--text-dim)">${d}</div>
+        ${s.type==='ban'?`<button class="btn-mod btn-mod-green" onclick="unban('${s.id}','${s.target}')">Débannir</button>`:''}`;
+      container.appendChild(div);
+    });
+  }
+
+  function renderBanned(bans){
+    const container=document.getElementById('bannedList');
+    if(!bans||bans.length===0){container.innerHTML='<div class="empty-state"><div class="empty-icon">🎉</div>Aucun joueur banni.</div>';return;}
+    container.innerHTML='';
+    bans.forEach(b=>{
+      const d=b.created_at?new Date(b.created_at).toLocaleDateString('fr-FR'):'—';
+      const row=document.createElement('div');
+      row.className='ban-row';
+      row.innerHTML=`
+        <span style="font-size:1.3rem">🚫</span>
+        <div class="ban-name">${b.target||'—'}</div>
+        <div class="ban-reason">${b.reason||'—'}</div>
+        <div class="ban-date">${d}</div>
+        <button class="btn-mod btn-mod-green" onclick="unban('${b.id}','${b.target}')">Débannir</button>`;
+      container.appendChild(row);
+    });
+  }
+
+  // ---- FILTERS ----
+  let currentFilter='all';
+  function filterReports(type,btn){
+    currentFilter=type;
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    applyFilters();
+  }
+
+  function searchReports(){applyFilters();}
+
+  function applyFilters(){
+    const q=document.getElementById('reportSearch').value.toLowerCase();
+    let filtered=allReports;
+    if(currentFilter!=='all')filtered=filtered.filter(r=>r.status===currentFilter);
+    if(q)filtered=filtered.filter(r=>(r.reported||'').toLowerCase().includes(q)||(r.reporter||'').toLowerCase().includes(q));
+    renderReports(filtered);
+  }
+
+  // ---- ACTION MODAL ----
+  function openAction(id,name){
+    currentReportId=id;
+    selectedAction='resolved';
+    document.getElementById('actionModalTitle').textContent='Traiter le signalement';
+    document.getElementById('actionModalSub').textContent='Joueur signalé : '+name;
+    document.getElementById('actionNote').value='';
+    document.querySelectorAll('#actionGrid .action-option').forEach(el=>el.classList.remove('selected'));
+    document.querySelector('#actionGrid .action-option[data-action="resolved"]').classList.add('selected');
+    document.getElementById('actionModal').classList.add('show');
+  }
+
+  function selectAction(el){
+    document.querySelectorAll('#actionGrid .action-option').forEach(e=>e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedAction=el.dataset.action;
+  }
+
+  async function confirmAction(){
+    if(!currentReportId)return;
+    const note=document.getElementById('actionNote').value.trim();
+    const report=allReports.find(r=>r.id===currentReportId);
+
+    // Update report status
+    const newStatus=selectedAction==='warn'||selectedAction==='ban'?'actioned':selectedAction;
+    await db.from('reports').update({status:newStatus,mod_note:note||null,updated_at:new Date().toISOString()}).eq('id',currentReportId);
+
+    // If ban or warn, create sanction
+    if((selectedAction==='ban'||selectedAction==='warn')&&report){
+      await db.from('sanctions').insert({
+        target:report.reported,
+        type:selectedAction,
+        reason:report.reason+(note?' — '+note:''),
+        mod:modUser.username,
+        created_at:new Date().toISOString()
+      });
+      if(selectedAction==='ban'){
+        await db.from('players').update({banned:true}).eq('username',report.reported);
+      }
+    }
+
+    addModLog(`Signalement #${currentReportId?.slice(-6)} → ${selectedAction}${note?' ('+note+')':''}`);
+    document.getElementById('actionModal').classList.remove('show');
+    showToast('✓ Action appliquée !');
+    loadAll();
+  }
+
+  async function quickAction(id,status){
+    await db.from('reports').update({status,updated_at:new Date().toISOString()}).eq('id',id);
+    addModLog(`Signalement ${id.slice(-6)} → ${status}`);
+    showToast('✓ Signalement '+status);
+    loadAll();
+  }
+
+  async function deleteReport(id){
+    if(!confirm('Supprimer ce signalement ?'))return;
+    await db.from('reports').delete().eq('id',id);
+    addModLog('Signalement '+id.slice(-6)+' supprimé.');
+    loadAll();showToast('✓ Signalement supprimé.');
+  }
+
+  function closeActionModal(e){if(e.target===document.getElementById('actionModal'))document.getElementById('actionModal').classList.remove('show');}
+
+  // ---- MANUAL SANCTION ----
+  function selectSanctionType(el){
+    document.querySelectorAll('#sanctionTypePicker .action-option').forEach(e=>e.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedSanctionType=el.dataset.type;
+  }
+
+  async function applySanctionManual(){
+    const target=document.getElementById('sanctionTarget').value.trim();
+    const reason=document.getElementById('sanctionReason').value.trim();
+    if(!target){showToast('⚠ Entre un pseudo.');return;}
+    if(!selectedSanctionType){showToast('⚠ Choisis un type de sanction.');return;}
+
+    const{error}=await db.from('sanctions').insert({
+      target,type:selectedSanctionType,reason:reason||'Sanction manuelle',
+      mod:modUser.username,created_at:new Date().toISOString()
+    });
+    if(selectedSanctionType==='ban'){
+      await db.from('players').update({banned:true}).eq('username',target);
+    }
+    if(error){showToast('⚠ Erreur: '+error.message);return;}
+    addModLog(`Sanction manuelle : ${selectedSanctionType} → ${target}`);
+    document.getElementById('sanctionTarget').value='';
+    document.getElementById('sanctionReason').value='';
+    showToast('✓ Sanction appliquée à '+target);
+    loadAll();
+  }
+
+  async function unban(sanctionId,name){
+    if(!confirm('Débannir '+name+' ?'))return;
+    await db.from('sanctions').delete().eq('id',sanctionId);
+    await db.from('players').update({banned:false}).eq('username',name);
+    addModLog('Déban : '+name);
+    showToast('✓ '+name+' a été débanni.');
+    loadAll();
+  }
+
+  function addModLog(msg){
+    modLogs.unshift({msg,time:new Date().toLocaleTimeString('fr-FR')});
+    if(modLogs.length>100)modLogs.pop();
+    const box=document.getElementById('modLogBox');
+    box.innerHTML=modLogs.map(l=>`<div style="border-bottom:1px solid rgba(74,111,165,.06);padding:.1rem 0"><span style="color:var(--accent);margin-right:.5rem">[${l.time}]</span><span style="color:var(--role-mod)">${l.msg}</span></div>`).join('');
+  }
+
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
