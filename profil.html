@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Profil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--night:#050810;--deep:#080d1a;--fog:#0b1228;--accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;--text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;--gold:#f5c842;--coin:#c0c8d0;--success:#4aff80;--error:#e05555;
+      --role-creator:#ff6b35;--role-admin:#e05555;--role-mod:#a855f7;--role-benevole:#22d3ee;--role-player:#4a6fa5;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;cursor:crosshair;}
+    .bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 60%);}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+
+    /* ROLE BADGES */
+    .role-badge{display:inline-flex;align-items:center;gap:.35rem;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;padding:.25rem .7rem;border:1px solid;border-radius:0;}
+    .role-badge.creator{color:var(--role-creator);border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.08);}
+    .role-badge.admin{color:var(--role-admin);border-color:rgba(224,85,85,.4);background:rgba(224,85,85,.08);}
+    .role-badge.mod{color:var(--role-mod);border-color:rgba(168,85,247,.4);background:rgba(168,85,247,.08);}
+    .role-badge.benevole{color:var(--role-benevole);border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.08);}
+    .role-badge.player{color:var(--role-player);border-color:rgba(74,111,165,.3);background:rgba(74,111,165,.05);}
+
+    /* TOPBAR */
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(to bottom,rgba(5,8,16,.98),rgba(5,8,16,.85));backdrop-filter:blur(8px);border-bottom:1px solid rgba(74,111,165,.15);display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;gap:1rem;}
+    .topbar-logo{font-family:'Cinzel Decorative',serif;font-size:1rem;letter-spacing:.25em;color:var(--moon);text-decoration:none;}
+    .topbar-currencies{display:flex;align-items:center;gap:1rem;}
+    .currency{display:flex;align-items:center;gap:.4rem;font-family:'Cinzel',serif;font-size:.72rem;}
+    .currency-val{color:var(--silver);}
+    .topbar-user{display:flex;align-items:center;gap:.7rem;}
+    .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--deep);border:1px solid rgba(74,111,165,.3);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+    .topbar-username{font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);}
+    .btn-tb{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(74,111,165,.25);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;text-decoration:none;}
+    .btn-tb:hover{border-color:rgba(74,111,165,.5);color:var(--silver);}
+    .btn-tb.logout{border-color:rgba(224,85,85,.25);color:var(--error);}
+    .btn-tb.logout:hover{background:rgba(224,85,85,.1);}
+
+    /* SKINS */
+    .skins-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.8rem;margin-top:1rem;}
+    .skin-card{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1rem .8rem;text-align:center;cursor:pointer;transition:all .25s;position:relative;}
+    .skin-card:hover{border-color:rgba(74,111,165,.4);transform:translateY(-2px);}
+    .skin-card.equipped{border-color:rgba(74,255,128,.5);background:linear-gradient(160deg,rgba(0,30,15,.8),var(--fog));}
+    .skin-card.equipped::before{content:'✓ Équipé';position:absolute;top:.4rem;right:.4rem;font-family:'Cinzel',serif;font-size:.5rem;color:var(--success);letter-spacing:.08em;}
+    .skin-card.locked{opacity:.6;cursor:default;}
+    .skin-card.locked:hover{transform:none;border-color:rgba(74,111,165,.15);}
+    .skin-preview{display:flex;justify-content:center;margin-bottom:.6rem;}
+    .skin-name{font-family:'Cinzel',serif;font-size:.65rem;color:var(--silver);margin-bottom:.3rem;letter-spacing:.08em;}
+    .skin-price{font-family:'Cinzel',serif;font-size:.6rem;display:flex;align-items:center;justify-content:center;gap:.3rem;}
+    .skin-price.free{color:var(--success);}
+    .skin-price.coins{color:var(--coin);}
+    .skin-price.gold{color:var(--gold);}
+    .skin-rarity{font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.15em;text-transform:uppercase;margin-top:.25rem;}
+    .skin-rarity.common{color:var(--text-dim);}
+    .skin-rarity.rare{color:#60a0e0;}
+    .skin-rarity.epic{color:#a855f7;}
+    .skin-rarity.legendary{color:var(--gold);}
+    .skins-filter{display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;}
+    .skin-filter-btn{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.4rem .9rem;border:1px solid rgba(74,111,165,.2);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+    .skin-filter-btn.active{border-color:var(--accent);color:var(--moon);background:rgba(74,111,165,.1);}
+    .skin-equip-btn{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(74,111,165,.3);background:rgba(74,111,165,.08);color:var(--accent);cursor:pointer;transition:all .2s;margin-top:.4rem;width:100%;}
+    .skin-equip-btn:hover{background:rgba(74,111,165,.2);color:var(--moon);}
+    .skin-buy-btn{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(74,255,128,.3);background:rgba(74,255,128,.06);color:var(--success);cursor:pointer;transition:all .2s;margin-top:.4rem;width:100%;}
+    .skin-buy-btn:hover{background:rgba(74,255,128,.15);}
+    .skin-owned-badge{font-family:'Cinzel',serif;font-size:.55rem;color:var(--text-dim);margin-top:.4rem;}
+    .layout{position:relative;z-index:10;display:grid;grid-template-columns:220px 1fr;min-height:100vh;padding-top:56px;}
+    .sidebar{background:linear-gradient(to bottom,rgba(8,13,26,.95),rgba(5,8,16,.9));border-right:1px solid rgba(74,111,165,.12);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:.3rem;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;}
+    .sidebar-label{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.3em;text-transform:uppercase;color:var(--text-dim);padding:.4rem .6rem;margin-top:.5rem;}
+    .sidebar-btn{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.08em;padding:.65rem .8rem;border:1px solid transparent;background:none;color:var(--text-dim);cursor:pointer;text-align:left;transition:all .2s;width:100%;display:flex;align-items:center;gap:.6rem;text-decoration:none;}
+    .sidebar-btn:hover{border-color:rgba(74,111,165,.25);color:var(--silver);background:rgba(74,111,165,.05);}
+    .sidebar-btn.active{border-color:rgba(74,111,165,.35);color:var(--moon);background:rgba(74,111,165,.08);}
+    .sidebar-divider{height:1px;background:rgba(74,111,165,.1);margin:.4rem 0;}
+    .main{padding:2rem;}
+    .panel{display:none;}
+    .panel.active{display:block;animation:fadeUp .4s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .panel-title{font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:var(--moon);margin-bottom:1.5rem;}
+
+    /* PROFILE CARD */
+    .profile-card{background:linear-gradient(160deg,rgba(8,13,26,.97),rgba(11,18,40,.95));border:1px solid rgba(74,111,165,.25);padding:2rem;margin-bottom:2rem;display:flex;gap:2rem;align-items:flex-start;position:relative;overflow:hidden;}
+    .profile-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .profile-avatar-wrap{position:relative;flex-shrink:0;}
+    .profile-avatar-big{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--deep),var(--fog));border:2px solid rgba(74,111,165,.35);display:flex;align-items:center;justify-content:center;font-size:3rem;box-shadow:0 0 30px rgba(74,111,165,.2);}
+    .profile-rank-crown{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:1.2rem;}
+    .profile-info{flex:1;}
+    .profile-name{font-family:'Cinzel Decorative',serif;font-size:1.5rem;color:var(--moon);margin-bottom:.5rem;}
+    .profile-roles{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.8rem;}
+    .profile-meta{display:flex;gap:1.5rem;flex-wrap:wrap;}
+    .profile-meta-item{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.15em;color:var(--text-dim);}
+    .profile-meta-item span{color:var(--silver);}
+    .profile-fav-role{background:rgba(74,111,165,.06);border:1px solid rgba(74,111,165,.15);padding:1rem 1.5rem;flex-shrink:0;min-width:180px;}
+    .fav-role-title{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.25em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.5rem;}
+    .fav-role-icon{font-size:2.5rem;margin-bottom:.3rem;display:block;text-align:center;}
+    .fav-role-name{font-family:'Cinzel',serif;font-size:.85rem;color:var(--moon);text-align:center;margin-bottom:.2rem;}
+    .fav-role-sub{font-size:.7rem;color:var(--text-dim);text-align:center;}
+
+    /* STATS */
+    .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:2rem;}
+    .stat-box{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.18);padding:1.2rem;text-align:center;transition:border-color .2s;}
+    .stat-box:hover{border-color:rgba(74,111,165,.35);}
+    .stat-val{font-family:'Cinzel Decorative',serif;font-size:1.6rem;color:var(--moon);}
+    .stat-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-top:.3rem;}
+
+    /* WINRATE BAR */
+    .winrate-bar-wrap{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.18);padding:1.2rem;margin-bottom:2rem;}
+    .winrate-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.7rem;}
+    .winrate-bar{height:6px;background:rgba(74,111,165,.15);position:relative;overflow:hidden;}
+    .winrate-fill{height:100%;background:linear-gradient(to right,var(--blue-glow),var(--accent));transition:width 1s ease;width:0%;}
+    .winrate-pct{font-family:'Cinzel Decorative',serif;font-size:1.4rem;color:var(--moon);margin-top:.5rem;}
+
+    /* LEADERBOARD */
+    .lb-header{display:grid;grid-template-columns:50px 1fr 100px 80px 60px 60px 80px;gap:.5rem;padding:.5rem 1rem;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);border-bottom:1px solid rgba(74,111,165,.15);margin-bottom:.5rem;}
+    .lb-row{display:grid;grid-template-columns:50px 1fr 100px 80px 60px 60px 80px;gap:.5rem;padding:.75rem 1rem;background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.08);margin-bottom:.4rem;transition:all .2s;cursor:pointer;}
+    .lb-row:hover{border-color:rgba(74,111,165,.3);transform:translateX(2px);}
+    .lb-row.me{border-color:rgba(74,111,165,.4);background:linear-gradient(135deg,rgba(26,58,110,.2),var(--fog));}
+    .lb-rank{font-family:'Cinzel',serif;font-size:.85rem;color:var(--text-dim);}
+    .lb-rank.r1{color:var(--gold);}
+    .lb-rank.r2{color:var(--silver);}
+    .lb-rank.r3{color:#c68b5a;}
+    .lb-player{display:flex;align-items:center;gap:.6rem;}
+    .lb-avatar{font-size:1.1rem;}
+    .lb-name{font-family:'Cinzel',serif;font-size:.75rem;color:var(--silver);}
+    .lb-name.me-name{color:var(--moon);}
+    .lb-points{font-family:'Cinzel',serif;font-size:.82rem;color:var(--moon);}
+    .lb-val{font-size:.78rem;color:var(--text-dim);}
+    .lb-role-cell{display:flex;align-items:center;}
+
+    /* FRIENDS */
+    .friend-row{display:flex;align-items:center;gap:1rem;padding:.9rem;background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.1);margin-bottom:.5rem;transition:all .2s;cursor:pointer;}
+    .friend-row:hover{border-color:rgba(74,111,165,.3);}
+    .friend-avatar{position:relative;font-size:1.3rem;}
+    .online-dot{position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;border-radius:50%;border:1px solid var(--night);}
+    .online-dot.on{background:var(--success);}
+    .online-dot.off{background:var(--text-dim);}
+    .friend-info{flex:1;}
+    .friend-name{font-family:'Cinzel',serif;font-size:.78rem;color:var(--silver);margin-bottom:.15rem;}
+    .friend-status{font-size:.7rem;color:var(--text-dim);}
+    .friend-status.online{color:var(--success);}
+    .friend-roles{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem;}
+    .friend-stats-mini{display:flex;gap:.8rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--text-dim);}
+    .friend-stats-mini span{color:var(--silver);}
+    .friend-actions{display:flex;gap:.4rem;}
+    .btn-friend-action{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.08em;padding:.35rem .7rem;border:1px solid rgba(74,111,165,.25);background:none;color:var(--accent);cursor:pointer;transition:all .2s;}
+    .btn-friend-action:hover{background:rgba(74,111,165,.15);}
+    .btn-friend-action.invite{border-color:rgba(74,255,128,.3);color:var(--success);}
+    .pending-row{display:flex;align-items:center;gap:.8rem;padding:.7rem;background:rgba(74,111,165,.05);border:1px solid rgba(74,111,165,.15);margin-bottom:.4rem;}
+    .pending-name{font-family:'Cinzel',serif;font-size:.75rem;color:var(--silver);flex:1;}
+    .btn-accept{font-family:'Cinzel',serif;font-size:.62rem;padding:.3rem .6rem;border:1px solid rgba(74,255,128,.35);background:rgba(74,255,128,.08);color:var(--success);cursor:pointer;transition:all .2s;}
+    .btn-accept:hover{background:rgba(74,255,128,.2);}
+    .btn-decline{font-family:'Cinzel',serif;font-size:.62rem;padding:.3rem .6rem;border:1px solid rgba(224,85,85,.25);background:none;color:var(--error);cursor:pointer;transition:all .2s;}
+    .btn-decline:hover{background:rgba(224,85,85,.1);}
+    .add-friend-box{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1.2rem;margin-bottom:1.5rem;}
+    .add-friend-row{display:flex;gap:.7rem;}
+    .add-friend-input{flex:1;background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.9rem;padding:.65rem 1rem;outline:none;}
+    .add-friend-input:focus{border-color:rgba(74,111,165,.6);}
+    .btn-add{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;padding:.65rem 1.2rem;border:1px solid rgba(74,111,165,.3);background:rgba(74,111,165,.08);color:var(--accent);cursor:pointer;transition:all .2s;}
+    .btn-add:hover{background:rgba(74,111,165,.2);}
+
+    /* FRIEND PROFILE MODAL */
+    .modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(5,8,16,.85);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;}
+    .modal-overlay.show{display:flex;}
+    .modal-card{background:linear-gradient(160deg,rgba(8,13,26,.99),rgba(11,18,40,.97));border:1px solid rgba(74,111,165,.3);padding:2rem;width:100%;max-width:500px;position:relative;animation:fadeUp .3s ease;}
+    .modal-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .modal-close{position:absolute;top:1rem;right:1rem;font-family:'Cinzel',serif;font-size:.7rem;color:var(--text-dim);cursor:pointer;padding:.3rem .6rem;border:1px solid rgba(74,111,165,.2);background:none;transition:all .2s;}
+    .modal-close:hover{color:var(--silver);border-color:rgba(74,111,165,.4);}
+    .modal-avatar{font-size:3.5rem;text-align:center;margin-bottom:.7rem;}
+    .modal-name{font-family:'Cinzel Decorative',serif;font-size:1.3rem;color:var(--moon);text-align:center;margin-bottom:.5rem;}
+    .modal-roles{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+    .modal-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-bottom:1rem;}
+    .modal-stat{background:rgba(74,111,165,.06);border:1px solid rgba(74,111,165,.12);padding:.8rem;text-align:center;}
+    .modal-stat-val{font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:var(--moon);}
+    .modal-stat-lbl{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.2em;color:var(--accent);margin-top:.2rem;}
+    .modal-fav-role{background:rgba(74,111,165,.06);border:1px solid rgba(74,111,165,.12);padding:.9rem;text-align:center;margin-bottom:1rem;}
+    .modal-fav-title{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);margin-bottom:.4rem;}
+    .modal-fav-icon{font-size:2rem;}
+    .modal-fav-name{font-family:'Cinzel',serif;font-size:.82rem;color:var(--moon);margin-top:.3rem;}
+
+    /* DAILY */
+    .daily-card{background:linear-gradient(135deg,rgba(26,58,110,.2),var(--fog));border:1px solid rgba(74,111,165,.25);padding:2rem;text-align:center;max-width:400px;}
+    .daily-icon{font-size:3rem;margin-bottom:.8rem;}
+    .daily-amount{font-family:'Cinzel Decorative',serif;font-size:1.6rem;color:var(--moon);margin-bottom:.4rem;}
+    .daily-sub{font-size:.8rem;color:var(--text-dim);margin-bottom:1.2rem;}
+    .btn-claim{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.18em;padding:.9rem 2rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);transition:all .3s;}
+    .btn-claim:hover{box-shadow:0 0 25px rgba(74,111,165,.5);}
+    .btn-claim:disabled{opacity:.4;cursor:not-allowed;}
+    .section-sub{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.8rem;margin-top:1.5rem;}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(74,111,165,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .toast{position:fixed;bottom:2rem;right:2rem;z-index:999;background:var(--fog);border:1px solid rgba(74,111,165,.3);padding:.9rem 1.4rem;font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);display:none;}
+    .toast.show{display:block;}
+    @media(max-width:700px){.layout{grid-template-columns:1fr;}.sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;gap:.2rem;}.stats-grid{grid-template-columns:repeat(2,1fr);}.lb-header,.lb-row{grid-template-columns:40px 1fr 80px 60px;}.lb-header div:nth-child(n+5),.lb-row div:nth-child(n+5){display:none;}}
+  </style>
+</head>
+<body>
+<div class="bg"><div class="bg-sky"></div><div class="stars" id="stars"></div></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-logo">LYCAN</a>
+  <div class="topbar-currencies">
+    <div class="currency"><span>🪙</span><span class="currency-val" id="coinsVal">—</span></div>
+    <div class="currency"><span>⚔️</span><span class="currency-val" id="goldVal">—</span></div>
+  </div>
+  <div class="topbar-user">
+    <div class="topbar-avatar" id="topAvatar">🐺</div>
+    <div class="topbar-username" id="topUsername">...</div>
+    <a href="lobby.html" class="btn-tb">Lobby</a>
+    <button class="btn-tb logout" onclick="logout()">Quitter</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Mon compte</div>
+    <button class="sidebar-btn active" onclick="showPanel('stats',this)"><span>👤</span> Mon profil</button>
+    <button class="sidebar-btn" onclick="showPanel('daily',this)"><span>🪙</span> Récompense</button>
+    <button class="sidebar-btn" onclick="showPanel('skins',this)"><span>🎨</span> Apparence</button>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Social</div>
+    <button class="sidebar-btn" onclick="showPanel('friends',this)"><span>👥</span> Amis</button>
+    <button class="sidebar-btn" onclick="showPanel('leaderboard',this)"><span>🏆</span> Classement</button>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Navigation</div>
+    <a href="lobby.html" class="sidebar-btn"><span>🏠</span> Lobby</a>
+  </aside>
+
+  <main class="main">
+
+    <!-- STATS / PROFIL -->
+    <div class="panel active" id="panel-stats">
+      <div class="panel-title">Mon profil</div>
+
+      <!-- PROFILE CARD -->
+      <div class="profile-card" id="profileCard">
+        <div class="profile-avatar-wrap">
+          <div class="profile-rank-crown" id="profileCrown"></div>
+          <div class="profile-avatar-big" id="profileAvatarBig">🐺</div>
+        </div>
+        <div class="profile-info">
+          <div class="profile-name" id="profileName">—</div>
+          <div class="profile-roles" id="profileRoles"></div>
+          <div class="profile-meta">
+            <div class="profile-meta-item">Membre depuis <span id="profileMember">—</span></div>
+            <div class="profile-meta-item">Dernière connexion <span id="profileSeen">—</span></div>
+            <div class="profile-meta-item">Email <span id="profileEmail">—</span></div>
+          </div>
+        </div>
+        <div class="profile-fav-role" id="favRoleCard">
+          <div class="fav-role-title">Rôle favori</div>
+          <div class="fav-role-icon" id="favRoleIcon">🐺</div>
+          <div class="fav-role-name" id="favRoleName">Villageois</div>
+          <div class="fav-role-sub" id="favRoleSub">0 parties jouées</div>
+        </div>
+      </div>
+
+      <!-- WINRATE BAR -->
+      <div class="winrate-bar-wrap">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.7rem">
+          <div class="winrate-label">Taux de victoire global</div>
+          <div class="winrate-pct" id="winratePct">—%</div>
+        </div>
+        <div class="winrate-bar"><div class="winrate-fill" id="winrateFill"></div></div>
+      </div>
+
+      <!-- STATS GRID -->
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val" id="sWins">—</div><div class="stat-label">Victoires</div></div>
+        <div class="stat-box"><div class="stat-val" id="sGames">—</div><div class="stat-label">Parties</div></div>
+        <div class="stat-box"><div class="stat-val" id="sPoints">—</div><div class="stat-label">Points</div></div>
+        <div class="stat-box"><div class="stat-val" id="sRank">—</div><div class="stat-label">Classement</div></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-val" id="sCoins">—</div><div class="stat-label">🪙 Pièces</div></div>
+        <div class="stat-box"><div class="stat-val" id="sGold">—</div><div class="stat-label">⚔️ Or</div></div>
+        <div class="stat-box"><div class="stat-val" id="sMember">—</div><div class="stat-label">Membre depuis</div></div>
+        <div class="stat-box"><div class="stat-val" id="sSeen">—</div><div class="stat-label">Dernière connexion</div></div>
+      </div>
+    </div>
+
+    <!-- DAILY -->
+    <div class="panel" id="panel-daily">
+      <div class="panel-title">Récompense quotidienne</div>
+      <div class="daily-card">
+        <div class="daily-icon">🪙</div>
+        <div class="daily-amount" id="dailyAmount">+30 pièces</div>
+        <div class="daily-sub" id="dailySub">Reviens chaque jour pour réclamer ta récompense !</div>
+        <button class="btn-claim" id="btnClaim" onclick="claimDaily()">Réclamer</button>
+      </div>
+    </div>
+
+    <!-- FRIENDS -->
+    <div class="panel" id="panel-friends">
+      <div class="panel-title">Mes amis</div>
+      <div class="add-friend-box">
+        <div style="font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.7rem">Ajouter un ami</div>
+        <div class="add-friend-row">
+          <input type="text" class="add-friend-input" id="friendInput" placeholder="Pseudo exact du joueur..." maxlength="20"/>
+          <button class="btn-add" onclick="addFriend()">Envoyer</button>
+        </div>
+        <div id="addFriendMsg" style="font-size:.72rem;margin-top:.5rem;font-family:'Cinzel',serif"></div>
+      </div>
+      <div class="section-sub">Demandes reçues (<span id="pendingCount">0</span>)</div>
+      <div id="pendingList"></div>
+      <div class="section-sub">Amis (<span id="friendCount">0</span>)</div>
+      <div id="friendsList"></div>
+    </div>
+
+    <!-- SKINS / APPARENCE -->
+    <div class="panel" id="panel-skins">
+      <div class="panel-title">🎨 Apparence</div>
+
+      <!-- Aperçu skin équipé -->
+      <div style="background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.2);padding:1.5rem;display:flex;gap:2rem;align-items:center;margin-bottom:1.5rem">
+        <div id="equippedPreview" style="flex-shrink:0"></div>
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem">Skin équipé</div>
+          <div style="font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--moon)" id="equippedName">—</div>
+          <div style="font-family:'Cinzel',serif;font-size:.58rem;color:var(--text-dim);margin-top:.2rem" id="equippedRarity">—</div>
+        </div>
+      </div>
+
+      <!-- Filtres -->
+      <div class="skins-filter">
+        <button class="skin-filter-btn active" onclick="filterSkins('all',this)">Tous</button>
+        <button class="skin-filter-btn" onclick="filterSkins('owned',this)">Possédés</button>
+        <button class="skin-filter-btn" onclick="filterSkins('common',this)">Commun</button>
+        <button class="skin-filter-btn" onclick="filterSkins('rare',this)">Rare</button>
+        <button class="skin-filter-btn" onclick="filterSkins('epic',this)">Épique</button>
+        <button class="skin-filter-btn" onclick="filterSkins('legendary',this)">Légendaire</button>
+      </div>
+
+      <div class="skins-grid" id="skinsGrid">
+        <div style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--text-dim);grid-column:1/-1"><span class="spinner"></span> Chargement...</div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div class="panel" id="panel-leaderboard">
+      <div class="panel-title">Classement global</div>
+      <div class="lb-header">
+        <div>Rang</div><div>Joueur</div><div>Rôle</div><div>Points</div><div>Wins</div><div>Parties</div><div>%</div>
+      </div>
+      <div id="leaderboard"><div style="font-family:'Cinzel',serif;font-size:.75rem;color:var(--text-dim);padding:1rem"><span class="spinner"></span>Chargement...</div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FRIEND PROFILE MODAL -->
+<div class="modal-overlay" id="friendModal" onclick="closeFriendModal(event)">
+  <div class="modal-card">
+    <button class="modal-close" onclick="document.getElementById('friendModal').classList.remove('show')">✕ Fermer</button>
+    <div class="modal-avatar" id="mAvatar">🐺</div>
+    <div class="modal-name" id="mName">—</div>
+    <div class="modal-roles" id="mRoles"></div>
+    <div class="modal-fav-role">
+      <div class="modal-fav-title">Rôle favori</div>
+      <div class="modal-fav-icon" id="mFavIcon">🐺</div>
+      <div class="modal-fav-name" id="mFavName">Villageois</div>
+    </div>
+    <div class="modal-stats-grid">
+      <div class="modal-stat"><div class="modal-stat-val" id="mWins">—</div><div class="modal-stat-lbl">Victoires</div></div>
+      <div class="modal-stat"><div class="modal-stat-val" id="mGames">—</div><div class="modal-stat-lbl">Parties</div></div>
+      <div class="modal-stat"><div class="modal-stat-val" id="mPoints">—</div><div class="modal-stat-lbl">Points</div></div>
+    </div>
+    <div style="text-align:center;font-family:'Cinzel',serif;font-size:.65rem;color:var(--text-dim);margin-top:.5rem" id="mMember">—</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpY3lqYWhreGlqa3hyeHRtamhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTczNjksImV4cCI6MjA4ODU5MzM2OX0.LnOf0QkBzdWZUh-IpVC9XNv7SP_SWpIwX-DTzT7y0q4';
+  const db=supabase.createClient(SURL,SKEY);
+
+  let user=JSON.parse(localStorage.getItem('lycan_user')||'null');
+  if(!user) window.location.href='login.html';
+
+  // Stars
+  const sc=document.getElementById('stars');
+  for(let i=0;i<80;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*70}%;left:${Math.random()*100}%;--op:${Math.random()*.5+.2};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+  // Role definitions
+  const ROLES_DEF={
+    villageois:{icon:'🧑‍🌾',label:'Villageois',color:'#a8b8d0'},
+    loup:{icon:'🐺',label:'Loup-Garou',color:'#e05555'},
+    sorciere:{icon:'🧙‍♀️',label:'Sorcière',color:'#a855f7'},
+    voyante:{icon:'🔮',label:'Voyante',color:'#22d3ee'},
+    chasseur:{icon:'🏹',label:'Chasseur',color:'#f5c842'},
+    cupidon:{icon:'💘',label:'Cupidon',color:'#ff6b9d'},
+    garde:{icon:'🛡️',label:'Garde',color:'#4aff80'},
+  };
+
+  // Staff roles
+  const STAFF_ROLES={
+    creator:{label:'Créateur',icon:'👑',cls:'creator'},
+    admin:{label:'Admin',icon:'⚔️',cls:'admin'},
+    mod:{label:'Modérateur',icon:'🛡',cls:'mod'},
+    benevole:{label:'Bénévole',icon:'🌟',cls:'benevole'},
+    player:{label:'Joueur',icon:'🐺',cls:'player'},
+  };
+
+  function buildRoleBadges(staffRole){
+    const r=staffRole||'player';
+    const def=STAFF_ROLES[r]||STAFF_ROLES.player;
+    return `<span class="role-badge ${def.cls}">${def.icon} ${def.label}</span>`;
+  }
+
+  function getFavRole(player){
+    const fav=player.fav_role||'villageois';
+    return ROLES_DEF[fav]||{icon:'🐺',label:'Villageois',color:'#a8b8d0'};
+  }
+
+  window.addEventListener('load',async()=>{
+    document.getElementById('topUsername').textContent=user.username;
+    document.getElementById('topAvatar').textContent=user.avatar||'🐺';
+
+    const{data:fresh}=await db.from('players').select('*').eq('id',user.id).single();
+    if(fresh){user=fresh;localStorage.setItem('lycan_user',JSON.stringify(fresh));}
+
+    // Get rank
+    const{data:allPlayers}=await db.from('players').select('username,points').order('points',{ascending:false});
+    const rankPos=(allPlayers||[]).findIndex(p=>p.username===user.username)+1;
+
+    updateUI(rankPos);
+    checkDaily();
+    renderLeaderboard(allPlayers||[]);
+    renderFriends();
+
+    const hash=window.location.hash.replace('#','');
+    if(hash==='friends'){showPanel('friends',null);}
+    if(hash==='leaderboard'){showPanel('leaderboard',null);}
+
+    // Animate winrate bar
+    setTimeout(()=>{
+      const rate=user.games>0?Math.round(user.wins/user.games*100):0;
+      document.getElementById('winrateFill').style.width=rate+'%';
+    },400);
+  });
+
+  function updateUI(rankPos){
+    document.getElementById('coinsVal').textContent=user.coins;
+    document.getElementById('goldVal').textContent=user.gold;
+
+    // Profile card
+    document.getElementById('profileAvatarBig').textContent=user.avatar||'🐺';
+    document.getElementById('profileName').textContent=user.username;
+    document.getElementById('profileRoles').innerHTML=buildRoleBadges(user.staff_role);
+    document.getElementById('profileMember').textContent=user.created_at?new Date(user.created_at).toLocaleDateString('fr-FR'):'—';
+    document.getElementById('profileSeen').textContent=user.last_seen&&user.last_seen>new Date(1).toISOString()?new Date(user.last_seen).toLocaleDateString('fr-FR'):'—';
+    document.getElementById('profileEmail').textContent=user.email||'—';
+
+    // Rank crown
+    const rk=rankPos||0;
+    document.getElementById('profileCrown').textContent=rk===1?'👑':rk===2?'🥈':rk===3?'🥉':'';
+
+    // Fav role
+    const fav=getFavRole(user);
+    document.getElementById('favRoleIcon').textContent=fav.icon;
+    document.getElementById('favRoleName').textContent=fav.label;
+    document.getElementById('favRoleSub').textContent=user.fav_role_games?(user.fav_role_games+' parties jouées'):'Rôle préféré';
+
+    // Stats
+    const rate=user.games>0?Math.round(user.wins/user.games*100):0;
+    document.getElementById('winratePct').textContent=rate+'%';
+    document.getElementById('sWins').textContent=user.wins||0;
+    document.getElementById('sGames').textContent=user.games||0;
+    document.getElementById('sPoints').textContent=user.points||0;
+    document.getElementById('sRank').textContent=rankPos?'#'+rankPos:'—';
+    document.getElementById('sCoins').textContent=user.coins||0;
+    document.getElementById('sGold').textContent=user.gold||0;
+    document.getElementById('sMember').textContent=user.created_at?new Date(user.created_at).toLocaleDateString('fr-FR'):'—';
+    document.getElementById('sSeen').textContent=user.last_seen&&user.last_seen>new Date(1).toISOString()?new Date(user.last_seen).toLocaleDateString('fr-FR'):'—';
+  }
+
+  // showPanel géré par le système skins plus bas
+
+  // ---- DAILY ----
+  function checkDaily(){
+    const last=localStorage.getItem('lycan_daily_'+user.id);
+    const today=new Date().toDateString();
+    if(last===today){
+      document.getElementById('dailyAmount').textContent='✓ Réclamé aujourd\'hui';
+      document.getElementById('dailySub').textContent='Reviens demain !';
+      document.getElementById('btnClaim').disabled=true;
+    }
+  }
+
+  async function claimDaily(){
+    const last=localStorage.getItem('lycan_daily_'+user.id);
+    const today=new Date().toDateString();
+    if(last===today){showToast('Déjà réclamé aujourd\'hui !');return;}
+    const newCoins=user.coins+30;
+    await db.from('players').update({coins:newCoins}).eq('id',user.id);
+    user.coins=newCoins;
+    localStorage.setItem('lycan_user',JSON.stringify(user));
+    localStorage.setItem('lycan_daily_'+user.id,today);
+    document.getElementById('coinsVal').textContent=newCoins;
+    document.getElementById('dailyAmount').textContent='✓ +30 pièces réclamées !';
+    document.getElementById('dailySub').textContent='Reviens demain !';
+    document.getElementById('btnClaim').disabled=true;
+    showToast('🪙 +30 pièces !');
+  }
+
+  // ---- LEADERBOARD ----
+  async function renderLeaderboard(players){
+    if(!players){
+      const{data}=await db.from('players').select('username,wins,games,points,avatar,staff_role,fav_role').order('points',{ascending:false}).limit(50);
+      players=data||[];
+    }else{
+      // Need full data for leaderboard
+      const{data}=await db.from('players').select('username,wins,games,points,avatar,staff_role,fav_role').order('points',{ascending:false}).limit(50);
+      players=data||[];
+    }
+    const lb=document.getElementById('leaderboard');
+    lb.innerHTML='';
+    if(!players||players.length===0){lb.innerHTML='<div style="font-family:\'Cinzel\',serif;font-size:.75rem;color:var(--text-dim);padding:1rem">Aucun joueur classé pour l\'instant.</div>';return;}
+    players.forEach((p,i)=>{
+      const rank=i+1;
+      const rankClass=rank===1?'r1':rank===2?'r2':rank===3?'r3':'';
+      const isMe=p.username===user.username;
+      const rate=p.games>0?Math.round(p.wins/p.games*100):0;
+      const fav=getFavRole(p);
+      const staff=STAFF_ROLES[p.staff_role||'player']||STAFF_ROLES.player;
+      const row=document.createElement('div');
+      row.className='lb-row'+(isMe?' me':'');
+      row.onclick=()=>openPlayerModal(p);
+      row.innerHTML=`
+        <div class="lb-rank ${rankClass}">${rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':String(rank).padStart(2,'0')}</div>
+        <div class="lb-player">
+          <div class="lb-avatar">${p.avatar||'🐺'}</div>
+          <div>
+            <div class="lb-name ${isMe?'me-name':''}">${p.username}${isMe?' (Moi)':''}</div>
+            <span class="role-badge ${staff.cls}" style="font-size:.5rem;padding:.15rem .5rem">${staff.icon} ${staff.label}</span>
+          </div>
+        </div>
+        <div class="lb-role-cell" style="font-size:1.1rem" title="${fav.label}">${fav.icon}</div>
+        <div class="lb-points">${p.points||0}</div>
+        <div class="lb-val">${p.wins||0}</div>
+        <div class="lb-val">${p.games||0}</div>
+        <div class="lb-val">${rate}%</div>`;
+      lb.appendChild(row);
+    });
+  }
+
+  // ---- FRIEND MODAL ----
+  function openPlayerModal(p){
+    const fav=getFavRole(p);
+    document.getElementById('mAvatar').textContent=p.avatar||'🐺';
+    document.getElementById('mName').textContent=p.username;
+    document.getElementById('mRoles').innerHTML=buildRoleBadges(p.staff_role);
+    document.getElementById('mFavIcon').textContent=fav.icon;
+    document.getElementById('mFavName').textContent=fav.label;
+    document.getElementById('mWins').textContent=p.wins||0;
+    document.getElementById('mGames').textContent=p.games||0;
+    document.getElementById('mPoints').textContent=p.points||0;
+    document.getElementById('mMember').textContent=p.created_at?'Membre depuis le '+new Date(p.created_at).toLocaleDateString('fr-FR'):'';
+    document.getElementById('friendModal').classList.add('show');
+  }
+
+  function closeFriendModal(e){
+    if(e.target===document.getElementById('friendModal'))
+      document.getElementById('friendModal').classList.remove('show');
+  }
+
+  // ---- FRIENDS ----
+  async function renderFriends(){
+    const{data:friendships}=await db.from('friendships').select('*').or(`user_a.eq.${user.username},user_b.eq.${user.username}`).eq('status','accepted');
+    const friendNames=(friendships||[]).map(f=>f.user_a===user.username?f.user_b:f.user_a);
+    const{data:pending}=await db.from('friendships').select('*').eq('user_b',user.username).eq('status','pending');
+
+    document.getElementById('friendCount').textContent=friendNames.length;
+    document.getElementById('pendingCount').textContent=(pending||[]).length;
+
+    // Render friends
+    const fl=document.getElementById('friendsList');
+    if(friendNames.length===0){
+      fl.innerHTML='<div style="font-size:.78rem;color:var(--text-dim);font-family:\'Cinzel\',serif;padding:.5rem">Aucun ami pour l\'instant.</div>';
+    }else{
+      const fiveMin=new Date(Date.now()-5*60*1000).toISOString();
+      const{data:friendData}=await db.from('players').select('username,last_seen,avatar,wins,games,points,staff_role,fav_role,created_at').in('username',friendNames);
+      fl.innerHTML='';
+      friendNames.forEach(name=>{
+        const fp=friendData?.find(p=>p.username===name)||{username:name};
+        const online=fp.last_seen&&fp.last_seen>fiveMin;
+        const fav=getFavRole(fp);
+        const staff=STAFF_ROLES[fp.staff_role||'player']||STAFF_ROLES.player;
+        const rate=fp.games>0?Math.round(fp.wins/fp.games*100):0;
+        const row=document.createElement('div');
+        row.className='friend-row';
+        row.onclick=(e)=>{if(!e.target.closest('button'))openPlayerModal(fp);};
+        row.innerHTML=`
+          <div class="friend-avatar">${fp.avatar||'👤'}<div class="online-dot ${online?'on':'off'}"></div></div>
+          <div class="friend-info">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem">
+              <div class="friend-name">${name}</div>
+              <span class="role-badge ${staff.cls}" style="font-size:.5rem;padding:.15rem .5rem">${staff.icon} ${staff.label}</span>
+            </div>
+            <div class="friend-status ${online?'online':''}">${online?'En ligne':'Hors ligne'}</div>
+            <div class="friend-stats-mini" style="margin-top:.3rem">
+              <span>${fav.icon} ${fav.label}</span>
+              <span>🏆 <span>${fp.wins||0}</span> wins</span>
+              <span>📊 <span>${rate}</span>%</span>
+              <span>⭐ <span>${fp.points||0}</span> pts</span>
+            </div>
+          </div>
+          <div class="friend-actions">
+            ${online?`<button class="btn-friend-action invite" onclick="showToast('Invitation envoyée à ${name} !')">Inviter</button>`:''}
+            <button class="btn-friend-action" style="color:var(--error);border-color:rgba(224,85,85,.3)" onclick="removeFriend('${name}')">✗</button>
+          </div>`;
+        fl.appendChild(row);
+      });
+    }
+
+    // Pending
+    const pl=document.getElementById('pendingList');
+    pl.innerHTML='';
+    if((pending||[]).length===0){
+      pl.innerHTML='<div style="font-size:.72rem;color:var(--text-dim);font-family:\'Cinzel\',serif;padding:.3rem">Aucune demande en attente.</div>';
+    }else{
+      pending.forEach(p=>{
+        const row=document.createElement('div');
+        row.className='pending-row';
+        row.id='pending-'+p.id;
+        row.innerHTML=`
+          <div style="font-size:1.2rem">👤</div>
+          <div class="pending-name">${p.user_a}</div>
+          <button class="btn-accept" onclick="acceptFriend('${p.id}','${p.user_a}')">✓ Accepter</button>
+          <button class="btn-decline" onclick="declineFriend('${p.id}')">✗</button>`;
+        pl.appendChild(row);
+      });
+    }
+  }
+
+  async function addFriend(){
+    const val=document.getElementById('friendInput').value.trim();
+    const msg=document.getElementById('addFriendMsg');
+    if(!val){msg.style.color='var(--error)';msg.textContent='Entre un pseudo.';return;}
+    if(val.toLowerCase()===user.username.toLowerCase()){msg.style.color='var(--error)';msg.textContent='Tu ne peux pas t\'ajouter toi-même !';return;}
+    const{data:target}=await db.from('players').select('username').eq('username',val).maybeSingle();
+    if(!target){msg.style.color='var(--error)';msg.textContent='Joueur "'+val+'" introuvable.';return;}
+    const{data:existing}=await db.from('friendships').select('id,status').or(`and(user_a.eq.${user.username},user_b.eq.${val}),and(user_a.eq.${val},user_b.eq.${user.username})`).maybeSingle();
+    if(existing){
+      if(existing.status==='accepted'){msg.style.color='var(--error)';msg.textContent='Vous êtes déjà amis !';return;}
+      if(existing.status==='pending'){msg.style.color='var(--error)';msg.textContent='Demande déjà envoyée.';return;}
+    }
+    const{error}=await db.from('friendships').insert({user_a:user.username,user_b:val,status:'pending'});
+    if(error){msg.style.color='var(--error)';msg.textContent='Erreur : '+error.message;return;}
+    msg.style.color='var(--success)';msg.textContent='✓ Demande envoyée à '+val+' !';
+    document.getElementById('friendInput').value='';
+    setTimeout(()=>msg.textContent='',3000);
+  }
+
+  async function acceptFriend(friendshipId,fromUser){
+    await db.from('friendships').update({status:'accepted'}).eq('id',friendshipId);
+    document.getElementById('pending-'+friendshipId)?.remove();
+    showToast('✓ '+fromUser+' ajouté à tes amis !');
+    renderFriends();
+  }
+
+  async function declineFriend(friendshipId){
+    await db.from('friendships').delete().eq('id',friendshipId);
+    document.getElementById('pending-'+friendshipId)?.remove();
+    showToast('Demande refusée.');
+    renderFriends();
+  }
+
+  async function removeFriend(name){
+    await db.from('friendships').delete().or(`and(user_a.eq.${user.username},user_b.eq.${name}),and(user_a.eq.${name},user_b.eq.${user.username})`);
+    showToast(name+' retiré de tes amis.');
+    renderFriends();
+  }
+
+  // ---- SKINS ----
+  // Catalogue de skins (format: {id, name, head, eye, costume, rarity, price, currency, description})
+  // Les skins du catalogue sont chargés depuis Supabase (table skin_catalog)
+  // Fallback: skins hardcodés si pas de table encore
+  const DEFAULT_SKINS=[
+    {id:'default',       name:'Loup des Ombres',  head:'#0b1228', eye:'#e0c060', costume:'#132044', rarity:'common',    price:0,    currency:'free'},
+    {id:'crimson',       name:'Loup Cramoisi',    head:'#2a0808', eye:'#e06060', costume:'#3a0808', rarity:'common',    price:80,   currency:'coins'},
+    {id:'forest',        name:'Loup des Forêts',  head:'#0a2010', eye:'#60e080', costume:'#0a2a10', rarity:'common',    price:80,   currency:'coins'},
+    {id:'void',          name:'Loup du Vide',     head:'#1a0a2e', eye:'#c060e0', costume:'#2a0a3e', rarity:'rare',      price:200,  currency:'coins'},
+    {id:'ocean',         name:'Loup des Mers',    head:'#0a1a2a', eye:'#60a0e0', costume:'#0a2040', rarity:'rare',      price:200,  currency:'coins'},
+    {id:'desert',        name:'Loup du Désert',   head:'#1a1a08', eye:'#e0d060', costume:'#2a2a08', rarity:'rare',      price:200,  currency:'coins'},
+    {id:'phantom',       name:'Loup Fantôme',     head:'#181818', eye:'#d0d0d0', costume:'#282828', rarity:'epic',      price:15,   currency:'gold'},
+    {id:'arcane',        name:'Loup Arcanique',   head:'#200820', eye:'#e060c0', costume:'#300830', rarity:'epic',      price:15,   currency:'gold'},
+    {id:'abyssal',       name:'Loup Abyssal',     head:'#082020', eye:'#60e0e0', costume:'#0a3030', rarity:'epic',      price:15,   currency:'gold'},
+    {id:'cosmic',        name:'Loup Cosmique',    head:'#0a0a28', eye:'#8060e0', costume:'#10103a', rarity:'legendary', price:40,   currency:'gold'},
+    {id:'inferno',       name:'Loup Infernal',    head:'#280808', eye:'#ff8040', costume:'#380a08', rarity:'legendary', price:40,   currency:'gold'},
+    {id:'nature',        name:'Loup de Nature',   head:'#082808', eye:'#80ff40', costume:'#0a3a08', rarity:'legendary', price:40,   currency:'gold'},
+  ];
+
+  let allSkins=[];
+  let ownedSkinIds=new Set();
+  let currentFilter='all';
+
+  function buildCharSVGSmall(app, size=60){
+    const s=size;
+    function adj(hex,pct){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);const nr=Math.max(0,Math.min(255,r+pct)),ng=Math.max(0,Math.min(255,g+pct)),nb=Math.max(0,Math.min(255,b+pct));return'#'+[nr,ng,nb].map(v=>v.toString(16).padStart(2,'0')).join('');}
+    return `<svg width="${s}" height="${Math.round(s*1.28)}" viewBox="0 0 70 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="35" cy="78" rx="16" ry="14" fill="${app.costume}"/>
+      <circle cx="35" cy="44" r="18" fill="${app.head}"/>
+      <path d="M18 42 Q35 24 52 42 Q46 32 35 28 Q24 32 18 42Z" fill="${adj(app.head,-15)}"/>
+      <path d="M23 32 L17 20 L29 28Z" fill="${app.head}"/>
+      <path d="M47 32 L53 20 L41 28Z" fill="${app.head}"/>
+      <ellipse cx="35" cy="50" rx="8" ry="6" fill="${adj(app.head,-20)}"/>
+      <ellipse cx="35" cy="46" rx="3" ry="2.5" fill="${adj(app.head,-30)}"/>
+      <circle cx="28" cy="41" r="4" fill="${app.eye}"/>
+      <circle cx="42" cy="41" r="4" fill="${app.eye}"/>
+      <circle cx="29.5" cy="40" r="1.8" fill="#050810"/>
+      <circle cx="43.5" cy="40" r="1.8" fill="#050810"/>
+      <circle cx="30.5" cy="39.2" r=".8" fill="white" opacity=".7"/>
+      <circle cx="44.5" cy="39.2" r=".8" fill="white" opacity=".7"/>
+    </svg>`;
+  }
+
+  async function loadSkins(){
+    // Charger le catalogue depuis Supabase, sinon fallback
+    try{
+      const{data:catalog}=await db.from('skin_catalog').select('*').order('rarity');
+      allSkins=(catalog&&catalog.length>0)?catalog:DEFAULT_SKINS;
+    }catch(e){allSkins=DEFAULT_SKINS;}
+
+    // Skins possédés par le joueur
+    const owned=user.owned_skins||[];
+    ownedSkinIds=new Set(['default',...owned]);
+
+    renderSkins();
+    renderEquipped();
+  }
+
+  function renderEquipped(){
+    const skinId=user.equipped_skin||'default';
+    const skin=allSkins.find(s=>s.id===skinId)||allSkins[0];
+    if(!skin)return;
+    document.getElementById('equippedPreview').innerHTML=buildCharSVGSmall(skin,70);
+    document.getElementById('equippedName').textContent=skin.name;
+    const rarityLabels={common:'Commun',rare:'Rare',epic:'Épique',legendary:'Légendaire'};
+    document.getElementById('equippedRarity').textContent=rarityLabels[skin.rarity]||skin.rarity;
+  }
+
+  function renderSkins(){
+    const grid=document.getElementById('skinsGrid');
+    const filtered=allSkins.filter(s=>{
+      if(currentFilter==='owned') return ownedSkinIds.has(s.id);
+      if(currentFilter==='all') return true;
+      return s.rarity===currentFilter;
+    });
+    if(filtered.length===0){grid.innerHTML='<div style="font-family:\'Cinzel\',serif;font-size:.75rem;color:var(--text-dim);grid-column:1/-1;padding:1rem">Aucun skin dans cette catégorie.</div>';return;}
+
+    const equippedId=user.equipped_skin||'default';
+    const rarityLabels={common:'Commun',rare:'Rare',epic:'Épique',legendary:'Légendaire'};
+    const currencyIcon={free:'✨',coins:'🪙',gold:'⚔️'};
+
+    grid.innerHTML=filtered.map(skin=>{
+      const owned=ownedSkinIds.has(skin.id);
+      const equipped=skin.id===equippedId;
+      let btnHtml='';
+      if(equipped){
+        btnHtml=`<div class="skin-owned-badge">✓ Équipé</div>`;
+      } else if(owned){
+        btnHtml=`<button class="skin-equip-btn" onclick="equipSkin('${skin.id}')">Équiper</button>`;
+      } else {
+        const priceStr=skin.price===0?'Gratuit':`${currencyIcon[skin.currency]} ${skin.price}`;
+        btnHtml=`<button class="skin-buy-btn" onclick="buySkin('${skin.id}')">${priceStr}</button>`;
+      }
+      return `<div class="skin-card ${equipped?'equipped':''} ${owned?'':'locked'}" id="skincard-${skin.id}">
+        <div class="skin-preview">${buildCharSVGSmall(skin,55)}</div>
+        <div class="skin-name">${skin.name}</div>
+        <div class="skin-rarity ${skin.rarity}">${rarityLabels[skin.rarity]||skin.rarity}</div>
+        ${btnHtml}
+      </div>`;
+    }).join('');
+  }
+
+  function filterSkins(filter, btn){
+    currentFilter=filter;
+    document.querySelectorAll('.skin-filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderSkins();
+  }
+
+  async function equipSkin(skinId){
+    if(!ownedSkinIds.has(skinId)){showToast('❌ Tu ne possèdes pas ce skin.');return;}
+    const skin=allSkins.find(s=>s.id===skinId);
+    if(!skin)return;
+    await db.from('players').update({equipped_skin:skinId}).eq('id',user.id);
+    user.equipped_skin=skinId;
+    localStorage.setItem('lycan_user',JSON.stringify(user));
+    renderSkins();
+    renderEquipped();
+    showToast(`✓ Skin "${skin.name}" équipé !`);
+  }
+
+  async function buySkin(skinId){
+    const skin=allSkins.find(s=>s.id===skinId);
+    if(!skin)return;
+    if(ownedSkinIds.has(skinId)){equipSkin(skinId);return;}
+
+    // Vérifier fonds
+    if(skin.price>0){
+      if(skin.currency==='coins'&&user.coins<skin.price){showToast('❌ Pas assez de pièces ! ('+user.coins+'/'+skin.price+' 🪙)');return;}
+      if(skin.currency==='gold'&&user.gold<skin.price){showToast('❌ Pas assez d\'or ! ('+user.gold+'/'+skin.price+' ⚔️)');return;}
+    }
+
+    // Débiter
+    const updates={equipped_skin:skinId};
+    const newOwned=[...ownedSkinIds,skinId].filter(id=>id!=='default');
+    updates.owned_skins=newOwned;
+    if(skin.currency==='coins'&&skin.price>0){updates.coins=user.coins-skin.price;user.coins=updates.coins;document.getElementById('coinsVal').textContent=user.coins;}
+    if(skin.currency==='gold'&&skin.price>0){updates.gold=user.gold-skin.price;user.gold=updates.gold;document.getElementById('goldVal').textContent=user.gold;}
+
+    await db.from('players').update(updates).eq('id',user.id);
+    ownedSkinIds.add(skinId);
+    user.equipped_skin=skinId;
+    user.owned_skins=newOwned;
+    localStorage.setItem('lycan_user',JSON.stringify(user));
+    renderSkins();
+    renderEquipped();
+    showToast(`✓ "${skin.name}" acheté et équipé !`);
+  }
+
+  // Charger les skins quand on ouvre le panneau
+  const _origShowPanel=showPanel;
+  function showPanel(name,btn){
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('panel-'+name).classList.add('active');
+    document.querySelectorAll('.sidebar-btn').forEach(b=>b.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    if(name==='skins'&&allSkins.length===0) loadSkins();
+  }
+
+  async function logout(){
+    await db.from('players').update({last_seen:new Date(0).toISOString()}).eq('id',user.id);
+    localStorage.removeItem('lycan_user');
+    window.location.href='login.html';
+  }
+
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
