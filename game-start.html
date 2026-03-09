@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — La nuit commence...</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --night:#050810;--deep:#080d1a;--fog:#0b1228;
+      --accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;
+      --text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;
+      --success:#4aff80;--gold:#f5c842;--error:#e05555;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    html,body{width:100%;height:100%;overflow:hidden;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;cursor:crosshair;}
+
+    .bg{position:fixed;inset:0;z-index:0;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,#0c1a40 0%,#050810 55%);}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.08}}
+    .moon-full{position:absolute;top:5%;left:50%;transform:translateX(-50%);width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f0f5ff,#d4e0f0 45%,#9ab8d8);box-shadow:0 0 40px rgba(180,210,255,.5),0 0 100px rgba(100,160,255,.25),0 0 200px rgba(60,100,200,.12);animation:moonGlow 4s infinite ease-in-out;}
+    @keyframes moonGlow{0%,100%{box-shadow:0 0 40px rgba(180,210,255,.5),0 0 100px rgba(100,160,255,.25)}50%{box-shadow:0 0 60px rgba(180,210,255,.7),0 0 140px rgba(100,160,255,.4)}}
+    .trees{position:absolute;bottom:0;width:100%;}
+    .fog-layer{position:absolute;bottom:15%;left:-10%;right:-10%;height:80px;background:linear-gradient(to right,transparent,rgba(15,30,70,.35) 25%,rgba(15,30,70,.35) 75%,transparent);filter:blur(22px);animation:fogDrift 14s infinite ease-in-out alternate;}
+    .fog-layer-2{bottom:8%;animation-delay:-6s;animation-duration:18s;opacity:.5;}
+    @keyframes fogDrift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}
+
+    .content{position:relative;z-index:10;width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:1.5rem 2rem 0;}
+    .top-area{text-align:center;animation:fadeDown .8s ease;}
+    @keyframes fadeDown{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+    .game-title{font-family:'Cinzel Decorative',serif;font-size:clamp(1rem,2.5vw,1.6rem);letter-spacing:.25em;color:var(--moon);text-shadow:0 0 20px rgba(100,160,255,.3);margin-bottom:.3rem;}
+    .game-sub{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.35em;text-transform:uppercase;color:var(--accent);}
+
+    .players-scene{flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:clamp(8px,2.5vw,32px);padding-bottom:22%;position:relative;}
+    .player-figure{display:flex;flex-direction:column;align-items:center;gap:.4rem;animation:figureRise var(--rise,.8s) ease var(--rdelay,0s) both;position:relative;}
+    @keyframes figureRise{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    .player-char{position:relative;filter:drop-shadow(0 4px 12px rgba(10,20,50,.8));animation:charFloat var(--float,4s) infinite ease-in-out var(--fdelay,0s);}
+    @keyframes charFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+    .player-char svg{display:block;}
+    .aura-ring{position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-radius:50%;opacity:.6;animation:auraBreath 3s infinite ease-in-out var(--fdelay,0s);}
+    @keyframes auraBreath{0%,100%{opacity:.4;transform:translateX(-50%) scaleX(1)}50%{opacity:.7;transform:translateX(-50%) scaleX(1.1)}}
+    .player-name-tag{font-family:'Cinzel',serif;font-size:clamp(.5rem,.8vw,.72rem);letter-spacing:.1em;color:var(--silver);text-align:center;white-space:nowrap;background:rgba(5,8,16,.5);padding:.15rem .5rem;border:1px solid rgba(74,111,165,.2);}
+    .player-name-tag.me-tag{color:var(--moon);border-color:rgba(74,111,165,.45);}
+
+    /* PLAYER ACTION BUTTONS (appear on hover) */
+    .player-actions{display:flex;gap:.3rem;margin-top:.2rem;opacity:0;transition:opacity .2s;}
+    .player-figure:hover .player-actions{opacity:1;}
+    .btn-pa{font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.06em;padding:.22rem .5rem;border:1px solid;background:rgba(5,8,16,.85);cursor:pointer;transition:all .2s;white-space:nowrap;}
+    .btn-pa.report{border-color:rgba(224,85,85,.4);color:var(--error);}
+    .btn-pa.report:hover{background:rgba(224,85,85,.15);}
+    .btn-pa.addfriend{border-color:rgba(74,111,165,.4);color:var(--accent);}
+    .btn-pa.addfriend:hover{background:rgba(74,111,165,.15);}
+
+    .bottom-ui{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(5,8,16,.95) 60%,transparent);padding:1.5rem 3rem 1.8rem;display:flex;align-items:flex-end;justify-content:space-between;gap:2rem;}
+    .bottom-info{}
+    .round-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:.3rem;}
+    .round-title{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);text-shadow:0 0 15px rgba(100,160,255,.3);}
+    .phase-indicator{display:flex;align-items:center;gap:.6rem;margin-top:.4rem;}
+    .phase-dot{width:8px;height:8px;border-radius:50%;background:var(--text-dim);}
+    .phase-dot.night{background:#4a6fa5;box-shadow:0 0 6px #4a6fa5;}
+    .phase-dot.day{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+    .phase-text{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;color:var(--text-dim);}
+    .player-count{text-align:center;}
+    .count-num{font-family:'Cinzel Decorative',serif;font-size:1.4rem;color:var(--moon);}
+    .count-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);}
+    .bottom-actions{display:flex;flex-direction:column;gap:.6rem;align-items:flex-end;}
+    .btn-continue{font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.18em;padding:.85rem 2rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);box-shadow:0 0 20px rgba(74,111,165,.3);transition:all .3s;animation:btnPulse 2s infinite ease-in-out;}
+    @keyframes btnPulse{0%,100%{box-shadow:0 0 20px rgba(74,111,165,.3)}50%{box-shadow:0 0 35px rgba(74,111,165,.6)}}
+    .btn-continue:hover{box-shadow:0 0 45px rgba(74,111,165,.8);transform:translateY(-2px);}
+    .btn-leave-sm{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.4rem .8rem;border:1px solid rgba(168,184,208,.2);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+    .btn-leave-sm:hover{color:var(--error);border-color:rgba(224,85,85,.3);}
+
+    .campfire-wrap{position:absolute;bottom:19%;left:50%;transform:translateX(-50%);}
+    .fire-base2{width:30px;height:7px;background:#2a1a08;border-radius:50%;margin:0 auto;}
+    .flame2{position:absolute;bottom:5px;border-radius:50% 50% 20% 20%;animation:flk var(--fd,.6s) infinite ease-in-out alternate;transform-origin:bottom center;}
+    @keyframes flk{from{transform:scaleX(1) scaleY(1) rotate(-2deg)}to{transform:scaleX(.85) scaleY(1.15) rotate(2deg)}}
+    .fire-glow2{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:90px;height:35px;background:radial-gradient(ellipse,rgba(200,100,30,.5) 0%,transparent 70%);filter:blur(8px);animation:gp 1s infinite ease-in-out alternate;}
+    @keyframes gp{from{opacity:.7;transform:translateX(-50%) scaleX(1)}to{opacity:1;transform:translateX(-50%) scaleX(1.2)}}
+    .night-flash{position:fixed;inset:0;background:rgba(5,8,16,.95);z-index:50;display:none;animation:nightFlash 1.5s ease forwards;}
+    @keyframes nightFlash{0%{opacity:0}20%{opacity:1}80%{opacity:1}100%{opacity:0;display:none}}
+    .role-reveal{position:fixed;inset:0;z-index:60;background:rgba(5,8,16,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:1rem;}
+    .role-reveal.show{display:flex;animation:fadeUp .4s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .role-card-big{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.3);padding:2.5rem 3rem;text-align:center;position:relative;}
+    .role-card-big::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .role-emoji{font-size:4rem;margin-bottom:.8rem;animation:roleAppear .6s ease;}
+    @keyframes roleAppear{from{transform:scale(0) rotate(-20deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+    .role-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.4em;text-transform:uppercase;color:var(--accent);margin-bottom:.4rem;}
+    .role-name-big{font-family:'Cinzel Decorative',serif;font-size:1.8rem;color:var(--moon);margin-bottom:.8rem;}
+    .role-desc-big{font-size:.85rem;color:var(--text-dim);line-height:1.7;max-width:320px;}
+    .btn-got-it{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.18em;padding:.8rem 2rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);margin-top:1.2rem;transition:all .3s;}
+    .btn-got-it:hover{box-shadow:0 0 20px rgba(74,111,165,.5);}
+
+    /* ===== REPORT MODAL ===== */
+    .modal-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,8,16,.88);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;}
+    .modal-overlay.show{display:flex;animation:fadeUp .3s ease;}
+
+    /* REPORT — bleu */
+    .report-card{background:linear-gradient(160deg,rgba(8,16,36,.99),rgba(10,22,50,.97));border:1px solid rgba(74,111,165,.45);padding:2rem;width:100%;max-width:460px;position:relative;}
+    .report-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,#4a6fa5,transparent);}
+    .report-header{display:flex;align-items:center;gap:.8rem;margin-bottom:1.5rem;}
+    .report-icon{font-size:1.6rem;}
+    .report-title{font-family:'Cinzel Decorative',serif;font-size:1rem;color:var(--moon);}
+    .report-sub{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;color:var(--accent);margin-top:.15rem;}
+    .report-target{background:rgba(74,111,165,.08);border:1px solid rgba(74,111,165,.2);padding:.7rem 1rem;margin-bottom:1.2rem;font-family:'Cinzel',serif;font-size:.75rem;color:var(--silver);display:flex;align-items:center;gap:.6rem;}
+    .reasons-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:1.2rem;}
+    .reason-btn{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.08em;padding:.65rem .8rem;border:1px solid rgba(74,111,165,.2);background:rgba(74,111,165,.04);color:var(--text-dim);cursor:pointer;transition:all .25s;text-align:left;}
+    .reason-btn:hover{border-color:rgba(74,111,165,.4);color:var(--silver);background:rgba(74,111,165,.1);}
+    .reason-btn.selected{border-color:rgba(74,111,165,.7);background:rgba(74,111,165,.18);color:var(--moon);}
+    .report-detail-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem;}
+    .report-textarea{width:100%;background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.85rem;padding:.8rem 1rem;outline:none;resize:none;height:80px;transition:border-color .3s;margin-bottom:1.2rem;}
+    .report-textarea:focus{border-color:rgba(74,111,165,.6);}
+    .report-textarea::placeholder{color:var(--text-dim);}
+    .report-actions{display:flex;gap:.7rem;}
+    .btn-send-report{flex:1;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.15em;padding:.85rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:all .3s;}
+    .btn-send-report:hover{box-shadow:0 0 20px rgba(74,111,165,.5);}
+    .btn-cancel-report{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;padding:.85rem 1.2rem;border:1px solid rgba(74,111,165,.2);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+    .btn-cancel-report:hover{color:var(--silver);border-color:rgba(74,111,165,.4);}
+
+    /* ADD FRIEND MODAL */
+    .addfriend-card{background:linear-gradient(160deg,rgba(8,16,36,.99),rgba(10,22,50,.97));border:1px solid rgba(74,111,165,.4);padding:2rem;width:100%;max-width:400px;position:relative;text-align:center;}
+    .addfriend-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .addfriend-avatar{font-size:3rem;margin-bottom:.6rem;}
+    .addfriend-name{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);margin-bottom:.3rem;}
+    .addfriend-sub{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;color:var(--accent);margin-bottom:1.5rem;}
+    .btn-confirm-add{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;padding:.9rem 2rem;border:1px solid rgba(74,255,128,.35);background:rgba(74,255,128,.08);color:var(--success);cursor:pointer;transition:all .3s;width:100%;margin-bottom:.6rem;}
+    .btn-confirm-add:hover{background:rgba(74,255,128,.2);}
+    .btn-cancel-add{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;padding:.7rem;border:1px solid rgba(74,111,165,.2);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;width:100%;}
+    .btn-cancel-add:hover{color:var(--silver);}
+
+    .toast{position:fixed;bottom:2rem;right:2rem;z-index:999;background:var(--fog);border:1px solid rgba(74,111,165,.3);padding:.9rem 1.4rem;font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);display:none;animation:fadeUp .3s ease;}
+    .toast.show{display:block;}
+    .spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(74,111,165,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    @media(max-width:700px){.players-scene{gap:6px;padding-bottom:28%;}.bottom-ui{padding:1rem 1rem 1.2rem;flex-direction:column;align-items:center;gap:1rem;}.reasons-grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="bg-sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="moon-full"></div>
+  <div class="fog-layer"></div>
+  <div class="fog-layer fog-layer-2"></div>
+  <svg class="trees" viewBox="0 0 1440 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#080d18" opacity="0.8">
+      <polygon points="0,220 45,90 90,220"/><polygon points="80,220 120,70 160,220"/>
+      <polygon points="200,220 240,80 280,220"/><polygon points="300,220 345,60 390,220"/>
+      <polygon points="420,220 460,75 500,220"/><polygon points="530,220 570,55 610,220"/>
+      <polygon points="640,220 680,68 720,220"/><polygon points="750,220 790,50 830,220"/>
+      <polygon points="860,220 900,62 940,220"/><polygon points="970,220 1010,55 1050,220"/>
+      <polygon points="1080,220 1120,70 1160,220"/><polygon points="1180,220 1220,60 1260,220"/>
+      <polygon points="1280,220 1320,80 1360,220"/><polygon points="1370,220 1410,65 1450,220"/>
+    </g>
+    <g fill="#050810">
+      <polygon points="50,220 90,55 130,220"/><polygon points="160,220 205,42 250,220"/>
+      <polygon points="350,220 395,48 440,220"/><polygon points="490,220 530,38 570,220"/>
+      <polygon points="620,220 660,45 700,220"/><polygon points="740,220 785,35 830,220"/>
+      <polygon points="880,220 920,42 960,220"/><polygon points="1000,220 1040,38 1080,220"/>
+      <polygon points="1130,220 1170,48 1210,220"/><polygon points="1240,220 1285,40 1330,220"/>
+      <polygon points="1340,220 1390,55 1440,220"/>
+    </g>
+    <rect x="0" y="208" width="1440" height="12" fill="#050810"/>
+  </svg>
+</div>
+
+<div class="night-flash" id="nightFlash"></div>
+
+<!-- Role reveal -->
+<div class="role-reveal" id="roleReveal">
+  <div class="role-card-big">
+    <div class="role-label">Ton rôle secret</div>
+    <div class="role-emoji" id="roleEmoji">🐺</div>
+    <div class="role-name-big" id="roleNameBig">Loup-Garou</div>
+    <div class="role-desc-big" id="roleDescBig">Chaque nuit, tu choisis une victime avec tes alliés.</div>
+    <button class="btn-got-it" onclick="hideRole()">J'ai compris — Que la nuit commence !</button>
+  </div>
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal" onclick="closeReportModal(event)">
+  <div class="report-card">
+    <div class="report-header">
+      <div class="report-icon">🚩</div>
+      <div>
+        <div class="report-title">Signaler un joueur</div>
+        <div class="report-sub">Signalement confidentiel — traité par l'équipe</div>
+      </div>
+    </div>
+    <div class="report-target" id="reportTarget">
+      <span style="font-size:1.2rem">👤</span>
+      <span id="reportTargetName">Joueur</span>
+    </div>
+    <div class="report-detail-label">Raison du signalement</div>
+    <div class="reasons-grid" id="reasonsGrid">
+      <button class="reason-btn" onclick="selectReason(this,'Triche / Cheat')">⚠️ Triche / Cheat</button>
+      <button class="reason-btn" onclick="selectReason(this,'Insultes / Harcèlement')">🤬 Insultes / Harcèlement</button>
+      <button class="reason-btn" onclick="selectReason(this,'Spam / Flood')">💬 Spam / Flood</button>
+      <button class="reason-btn" onclick="selectReason(this,'AFK / Abandon volontaire')">💤 AFK / Abandon</button>
+      <button class="reason-btn" onclick="selectReason(this,'Comportement toxique')">☠️ Comportement toxique</button>
+      <button class="reason-btn" onclick="selectReason(this,'Autre')">📋 Autre</button>
+    </div>
+    <div class="report-detail-label">Détails (optionnel)</div>
+    <textarea class="report-textarea" id="reportDetails" placeholder="Décris ce qu'il s'est passé..."></textarea>
+    <div class="report-actions">
+      <button class="btn-cancel-report" onclick="document.getElementById('reportModal').classList.remove('show')">Annuler</button>
+      <button class="btn-send-report" id="sendReportBtn" onclick="submitReport()">🚩 Envoyer le signalement</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD FRIEND MODAL -->
+<div class="modal-overlay" id="addFriendModal" onclick="closeAddFriendModal(event)">
+  <div class="addfriend-card">
+    <div class="addfriend-avatar" id="addFriendAvatar">🐺</div>
+    <div class="addfriend-name" id="addFriendName">—</div>
+    <div class="addfriend-sub">Ajouter cet joueur à ta liste d'amis ?</div>
+    <button class="btn-confirm-add" id="confirmAddBtn" onclick="submitAddFriend()">👥 Envoyer une demande d'ami</button>
+    <button class="btn-cancel-add" onclick="document.getElementById('addFriendModal').classList.remove('show')">Annuler</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+  <div class="top-area">
+    <div class="game-title" id="gameTitle">La Nuit du Village</div>
+    <div class="game-sub">La partie commence — Les rôles sont distribués</div>
+  </div>
+
+  <div class="players-scene" id="playersScene">
+    <div class="campfire-wrap">
+      <div style="position:relative;width:34px;height:46px;margin:0 auto">
+        <div class="flame2" style="width:12px;height:26px;left:11px;background:linear-gradient(to top,#c04010,#e08020);--fd:.5s"></div>
+        <div class="flame2" style="width:8px;height:18px;left:4px;bottom:3px;background:linear-gradient(to top,#a03008,#d06018);--fd:.7s"></div>
+        <div class="flame2" style="width:8px;height:18px;right:4px;bottom:3px;background:linear-gradient(to top,#c05010,#f09030);--fd:.4s"></div>
+        <div class="flame2" style="width:6px;height:14px;left:9px;background:linear-gradient(to top,#e09020,#ffd060);--fd:.35s"></div>
+      </div>
+      <div class="fire-base2"></div>
+      <div class="fire-glow2"></div>
+    </div>
+  </div>
+
+  <div class="bottom-ui">
+    <div class="bottom-info">
+      <div class="round-label">Manche 1</div>
+      <div class="round-title">Première Nuit</div>
+      <div class="phase-indicator">
+        <div class="phase-dot night"></div>
+        <div class="phase-text">Phase nuit · Les loups s'éveillent</div>
+      </div>
+    </div>
+    <div class="player-count">
+      <div class="count-num" id="aliveCount">—</div>
+      <div class="count-label">Joueurs en vie</div>
+    </div>
+    <div class="bottom-actions">
+      <button class="btn-continue" onclick="showRoleReveal()">🐺 Voir mon rôle</button>
+      <button class="btn-leave-sm" onclick="if(confirm('Quitter ?'))window.location.href='lobby.html'">Abandonner la partie</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY='sb_publishable_5s9soZN5O0Mp4nuWHlXXYA_Xv979vZj';
+  const db=supabase.createClient(SURL,SKEY);
+
+  const user=JSON.parse(localStorage.getItem('lycan_user')||localStorage.getItem('lycan_current_user')||'{"username":"Joueur","avatar":"🐺"}');
+  const params=new URLSearchParams(window.location.search);
+  const roomTitle=params.get('name')||'La Nuit du Village';
+  document.getElementById('gameTitle').textContent=roomTitle;
+
+  let currentReportTarget=null;
+  let currentAddFriendTarget=null;
+  let selectedReasonText='';
+
+  const appearances=[
+    {head:'#0b1228',eye:'#e0c060',costume:'#132044'},{head:'#1a0a2e',eye:'#c060e0',costume:'#2a0a3e'},
+    {head:'#0a2010',eye:'#60e080',costume:'#0a2a10'},{head:'#2a0808',eye:'#e06060',costume:'#3a0808'},
+    {head:'#0a1a2a',eye:'#60a0e0',costume:'#0a2040'},{head:'#1a1a08',eye:'#e0d060',costume:'#2a2a08'},
+    {head:'#200820',eye:'#e060c0',costume:'#300830'},{head:'#082020',eye:'#60e0e0',costume:'#0a3030'},
+    {head:'#181818',eye:'#d0d0d0',costume:'#282828'},{head:'#0a0a28',eye:'#8060e0',costume:'#10103a'},
+    {head:'#280808',eye:'#ff8040',costume:'#380a08'},{head:'#082808',eye:'#80ff40',costume:'#0a3a08'},
+  ];
+
+  const npcNames=['NocteMbr','Isabelyne','ShadowFang','Veilleur_77','MireilleV','LoupBlanc','RedFang','DarkMoon','Sylvaine','Anubis_XIII','OmbreNoire'];
+  const playerCount=parseInt(params.get('players')||'8');
+  const players=[{name:user.username,avatar:user.avatar||'🐺',isMe:true}];
+  for(let i=0;i<Math.min(playerCount-1,npcNames.length);i++){
+    players.push({name:npcNames[i],avatar:'🐺',isMe:false});
+  }
+
+  document.getElementById('aliveCount').textContent=players.length;
+
+  function buildCharSVG(app,size){
+    const s=size;
+    return `<svg width="${s}" height="${Math.round(s*1.28)}" viewBox="0 0 70 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <ellipse cx="35" cy="78" rx="16" ry="14" fill="${app.costume}"/>
+      <circle cx="35" cy="44" r="18" fill="${app.head}"/>
+      <path d="M18 42 Q35 24 52 42 Q46 32 35 28 Q24 32 18 42Z" fill="${adjustBrightness(app.head,-15)}"/>
+      <path d="M23 32 L17 20 L29 28Z" fill="${app.head}"/>
+      <path d="M47 32 L53 20 L41 28Z" fill="${app.head}"/>
+      <ellipse cx="35" cy="50" rx="8" ry="6" fill="${adjustBrightness(app.head,-20)}"/>
+      <ellipse cx="35" cy="46" rx="3" ry="2.5" fill="${adjustBrightness(app.head,-30)}"/>
+      <circle cx="28" cy="41" r="4" fill="${app.eye}"/>
+      <circle cx="42" cy="41" r="4" fill="${app.eye}"/>
+      <circle cx="29.5" cy="40" r="1.8" fill="#050810"/>
+      <circle cx="43.5" cy="40" r="1.8" fill="#050810"/>
+      <circle cx="30.5" cy="39.2" r=".8" fill="white" opacity=".7"/>
+      <circle cx="44.5" cy="39.2" r=".8" fill="white" opacity=".7"/>
+    </svg>`;
+  }
+
+  function adjustBrightness(hex,pct){
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    const nr=Math.max(0,Math.min(255,r+pct)),ng=Math.max(0,Math.min(255,g+pct)),nb=Math.max(0,Math.min(255,b+pct));
+    return '#'+[nr,ng,nb].map(v=>v.toString(16).padStart(2,'0')).join('');
+  }
+
+  const scene=document.getElementById('playersScene');
+  const charSize=Math.max(40,Math.min(80,Math.floor(500/players.length)));
+
+  players.forEach((p,i)=>{
+    const app=appearances[i%appearances.length];
+    const delay=i*0.12;
+    const floatDelay=(i*0.4)%3;
+    const fig=document.createElement('div');
+    fig.className='player-figure';
+    fig.style.cssText=`--rise:${0.5+i*0.08}s;--rdelay:${delay}s;--float:${3.5+Math.random()}s;--fdelay:${floatDelay}s;`;
+    const auraColor=app.eye.replace('#','');
+    const auraR=parseInt(auraColor.slice(0,2),16);
+    const auraG=parseInt(auraColor.slice(2,4),16);
+    const auraB=parseInt(auraColor.slice(4,6),16);
+
+    const actionsHTML=p.isMe?'':`
+      <div class="player-actions">
+        <button class="btn-pa report" onclick="openReport('${p.name}','${p.avatar}')">🚩 Signaler</button>
+        <button class="btn-pa addfriend" onclick="openAddFriend('${p.name}','${p.avatar}')">👥 Ami+</button>
+      </div>`;
+
+    fig.innerHTML=`
+      <div class="player-char">
+        <div class="aura-ring" style="width:${charSize*1.2}px;height:${charSize*0.4}px;background:radial-gradient(ellipse,rgba(${auraR},${auraG},${auraB},.4) 0%,transparent 70%);"></div>
+        ${buildCharSVG(app,charSize)}
+      </div>
+      <div class="player-name-tag ${p.isMe?'me-tag':''}">${p.name}${p.isMe?' (Moi)':''}</div>
+      ${actionsHTML}`;
+
+    const campfire=scene.querySelector('.campfire-wrap');
+    if(i<Math.floor(players.length/2)){scene.insertBefore(fig,campfire);}
+    else{scene.appendChild(fig);}
+  });
+
+  // ---- REPORT ----
+  function openReport(name,avatar){
+    currentReportTarget={name,avatar};
+    selectedReasonText='';
+    document.querySelectorAll('.reason-btn').forEach(b=>b.classList.remove('selected'));
+    document.getElementById('reportDetails').value='';
+    document.getElementById('reportTargetName').textContent=name;
+    document.getElementById('reportModal').classList.add('show');
+  }
+
+  function selectReason(btn,reason){
+    document.querySelectorAll('.reason-btn').forEach(b=>b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedReasonText=reason;
+  }
+
+  async function submitReport(){
+    if(!selectedReasonText){showToast('⚠ Choisis une raison.');return;}
+    const details=document.getElementById('reportDetails').value.trim();
+    const btn=document.getElementById('sendReportBtn');
+    btn.innerHTML='<span class="spinner"></span>Envoi...';
+    btn.disabled=true;
+
+    const{error}=await db.from('reports').insert({
+      reporter:user.username,
+      reported:currentReportTarget.name,
+      reason:selectedReasonText,
+      details:details||null,
+      game_name:roomTitle,
+      status:'pending',
+      created_at:new Date().toISOString()
+    });
+
+    btn.innerHTML='🚩 Envoyer le signalement';
+    btn.disabled=false;
+
+    if(error){
+      // Table might not exist yet — still show confirmation to user
+      console.warn('Report table error:',error.message);
+    }
+    document.getElementById('reportModal').classList.remove('show');
+    showToast('✓ Signalement envoyé — merci !');
+  }
+
+  function closeReportModal(e){if(e.target===document.getElementById('reportModal'))document.getElementById('reportModal').classList.remove('show');}
+
+  // ---- ADD FRIEND ----
+  function openAddFriend(name,avatar){
+    currentAddFriendTarget={name,avatar};
+    document.getElementById('addFriendAvatar').textContent=avatar||'🐺';
+    document.getElementById('addFriendName').textContent=name;
+    document.getElementById('addFriendModal').classList.add('show');
+  }
+
+  async function submitAddFriend(){
+    if(!currentAddFriendTarget)return;
+    const btn=document.getElementById('confirmAddBtn');
+    btn.innerHTML='<span class="spinner"></span>Envoi...';
+    btn.disabled=true;
+    const name=currentAddFriendTarget.name;
+
+    // Check existing
+    const{data:existing}=await db.from('friendships').select('id,status').or(`and(user_a.eq.${user.username},user_b.eq.${name}),and(user_a.eq.${name},user_b.eq.${user.username})`).maybeSingle();
+    if(existing){
+      btn.innerHTML='👥 Envoyer une demande d\'ami';btn.disabled=false;
+      document.getElementById('addFriendModal').classList.remove('show');
+      showToast(existing.status==='accepted'?'Vous êtes déjà amis !':'Demande déjà en cours.');
+      return;
+    }
+    const{error}=await db.from('friendships').insert({user_a:user.username,user_b:name,status:'pending'});
+    btn.innerHTML='👥 Envoyer une demande d\'ami';btn.disabled=false;
+    document.getElementById('addFriendModal').classList.remove('show');
+    if(error){showToast('⚠ Erreur: '+error.message);}
+    else{showToast('✓ Demande envoyée à '+name+' !');}
+  }
+
+  function closeAddFriendModal(e){if(e.target===document.getElementById('addFriendModal'))document.getElementById('addFriendModal').classList.remove('show');}
+
+  // ---- ROLE ----
+  const roles=[
+    {emoji:'🐺',name:'Loup-Garou',desc:'Chaque nuit, choisis une victime avec tes alliés. Reste discret le jour pour éviter d\'être éliminé par le village.',isWolf:true},
+    {emoji:'🏘️',name:'Villageois',desc:'Tu n\'as aucun pouvoir spécial mais ta voix compte. Observe, analyse et convaincs le village d\'éliminer les loups.',isWolf:false},
+    {emoji:'🔮',name:'Voyante',desc:'Chaque nuit, tu peux découvrir l\'identité secrète d\'un joueur. Utilise ce pouvoir avec prudence.',isWolf:false},
+    {emoji:'💉',name:'Sorcière',desc:'Tu possèdes une potion de vie et une de mort. Utilise-les au bon moment pour changer le cours de la partie.',isWolf:false},
+    {emoji:'🏹',name:'Chasseur',desc:'Si tu es éliminé, tu peux emporter un joueur avec toi. Choisis bien ta cible.',isWolf:false},
+  ];
+  const myRole=roles[Math.floor(Math.random()*roles.length)];
+
+  function showRoleReveal(){
+    document.getElementById('roleEmoji').textContent=myRole.emoji;
+    document.getElementById('roleNameBig').textContent=myRole.name;
+    document.getElementById('roleDescBig').textContent=myRole.desc;
+    document.getElementById('roleReveal').classList.add('show');
+  }
+
+  function hideRole(){
+    document.getElementById('roleReveal').classList.remove('show');
+    const flash=document.getElementById('nightFlash');
+    flash.style.display='block';
+    setTimeout(()=>flash.style.display='none',1500);
+  }
+
+  // Stars
+  const c=document.getElementById('stars');
+  for(let i=0;i<140;i++){
+    const s=document.createElement('div');s.className='star';
+    const sz=Math.random()*2.5+.5;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*65}%;left:${Math.random()*100}%;--op:${Math.random()*.6+.2};--d:${Math.random()*5+2}s;--delay:${Math.random()*5}s`;
+    c.appendChild(s);
+  }
+
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
