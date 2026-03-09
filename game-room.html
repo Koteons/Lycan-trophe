@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Salle d'attente</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--night:#050810;--deep:#080d1a;--fog:#0b1228;--accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;--text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;--success:#4aff80;--error:#e05555;--gold:#f5c842;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;cursor:crosshair;}
+    .bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 55%);}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+    .moon-bg{position:absolute;top:4%;right:8%;width:55px;height:55px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8f0ff,#c2d4f0 50%,#8aabcf);box-shadow:0 0 25px rgba(180,210,255,.4);animation:moonPulse 6s infinite ease-in-out;}
+    @keyframes moonPulse{0%,100%{box-shadow:0 0 25px rgba(180,210,255,.4)}50%{box-shadow:0 0 45px rgba(180,210,255,.6)}}
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(to bottom,rgba(5,8,16,.98),rgba(5,8,16,.85));backdrop-filter:blur(8px);border-bottom:1px solid rgba(74,111,165,.15);display:flex;align-items:center;justify-content:space-between;padding:.8rem 2rem;}
+    .topbar-logo{font-family:'Cinzel Decorative',serif;font-size:1rem;letter-spacing:.25em;color:var(--moon);text-decoration:none;}
+    .topbar-info{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;color:var(--silver);}
+    .btn-leave{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;padding:.4rem 1rem;border:1px solid rgba(224,85,85,.3);background:rgba(224,85,85,.06);color:var(--error);cursor:pointer;transition:all .2s;}
+    .btn-leave:hover{background:rgba(224,85,85,.15);}
+    .content{position:relative;z-index:10;padding:80px 2rem 2rem;max-width:1100px;margin:0 auto;}
+    .room-header{text-align:center;margin-bottom:2.5rem;animation:fadeUp .5s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .room-title{font-family:'Cinzel Decorative',serif;font-size:clamp(1.4rem,3vw,2.2rem);color:var(--moon);margin-bottom:.4rem;}
+    .room-code-wrap{display:inline-flex;align-items:center;gap:.8rem;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--accent);border:1px solid rgba(74,111,165,.25);padding:.4rem 1.2rem;margin-top:.5rem;cursor:pointer;transition:all .2s;}
+    .room-code-wrap:hover{border-color:rgba(74,111,165,.5);}
+    .room-code{font-size:1rem;color:var(--moon);letter-spacing:.3em;}
+    .room-layout{display:grid;grid-template-columns:1fr 300px;gap:1.5rem;}
+    .section-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.7rem;}
+    .section-label::before{content:'';display:block;width:22px;height:1px;background:var(--accent);}
+    .players-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.5rem;}
+    .player-slot{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1.2rem;text-align:center;min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;transition:all .3s;}
+    .player-slot.filled{border-color:rgba(74,111,165,.3);}
+    .player-slot.me{border-color:rgba(74,111,165,.5);background:linear-gradient(160deg,rgba(26,58,110,.2),var(--fog));}
+    .player-slot.host::before{content:'👑';position:absolute;top:.4rem;right:.5rem;font-size:.8rem;}
+    .player-slot{position:relative;}
+    .player-slot.empty{opacity:.4;border-style:dashed;}
+    .slot-avatar{font-size:1.8rem;animation:joinPop .4s ease;}
+    @keyframes joinPop{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+    .slot-name{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.08em;color:var(--silver);}
+    .slot-name.me-name{color:var(--moon);}
+    .slot-ready{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.1em;}
+    .slot-ready.ready{color:var(--success);}
+    .slot-ready.waiting{color:var(--text-dim);}
+    .slot-empty-label{font-family:'Cinzel',serif;font-size:.62rem;color:var(--text-dim);}
+    .players-bar{margin-bottom:1.5rem;}
+    .bar-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;color:var(--text-dim);margin-bottom:.4rem;display:flex;justify-content:space-between;}
+    .bar-track{height:4px;background:rgba(74,111,165,.15);border-radius:2px;overflow:hidden;}
+    .bar-fill{height:100%;background:linear-gradient(to right,var(--blue-glow),var(--accent));transition:width .5s ease;border-radius:2px;}
+    .chat-box{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);display:flex;flex-direction:column;height:300px;}
+    .chat-messages{flex:1;padding:1rem;overflow-y:auto;display:flex;flex-direction:column;gap:.5rem;}
+    .chat-messages::-webkit-scrollbar{width:4px;}
+    .chat-messages::-webkit-scrollbar-thumb{background:rgba(74,111,165,.3);}
+    .chat-msg{font-size:.78rem;line-height:1.5;}
+    .chat-msg .chat-user{font-family:'Cinzel',serif;font-size:.68rem;color:var(--accent);}
+    .chat-msg .chat-user.me{color:var(--moon);}
+    .chat-msg.system{color:var(--text-dim);font-style:italic;font-size:.72rem;}
+    .chat-input-row{display:flex;border-top:1px solid rgba(74,111,165,.15);}
+    .chat-input{flex:1;background:transparent;border:none;color:var(--moon);font-family:'Lato',sans-serif;font-size:.85rem;padding:.7rem 1rem;outline:none;}
+    .chat-input::placeholder{color:var(--text-dim);}
+    .chat-send{font-family:'Cinzel',serif;font-size:.65rem;padding:.7rem 1rem;background:rgba(74,111,165,.15);border:none;border-left:1px solid rgba(74,111,165,.15);color:var(--accent);cursor:pointer;transition:all .2s;}
+    .chat-send:hover{background:rgba(74,111,165,.3);color:var(--moon);}
+    .right-panel{display:flex;flex-direction:column;gap:1rem;}
+    .info-box{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1.2rem;}
+    .info-title{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:.8rem;}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid rgba(74,111,165,.07);font-size:.78rem;}
+    .info-row:last-child{border-bottom:none;}
+    .info-key{color:var(--text-dim);font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;}
+    .info-val{color:var(--silver);}
+    .roles-list{display:flex;flex-direction:column;gap:.4rem;}
+    .role-row{display:flex;align-items:center;gap:.6rem;font-size:.75rem;}
+    .role-count{font-family:'Cinzel',serif;font-size:.65rem;color:var(--accent);min-width:20px;text-align:right;}
+    .actions{display:flex;flex-direction:column;gap:.6rem;}
+    .btn-ready{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;padding:.9rem;border:none;cursor:pointer;background:linear-gradient(135deg,rgba(74,255,128,.15),rgba(74,255,128,.08));border:1px solid rgba(74,255,128,.35);color:var(--success);transition:all .3s;width:100%;}
+    .btn-ready:hover{background:linear-gradient(135deg,rgba(74,255,128,.25),rgba(74,255,128,.12));}
+    .btn-ready.is-ready{background:rgba(74,255,128,.2);}
+    .btn-start{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;padding:.9rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);box-shadow:0 0 20px rgba(74,111,165,.3);transition:all .3s;width:100%;}
+    .btn-start:hover{box-shadow:0 0 35px rgba(74,111,165,.6);}
+    .btn-start:disabled{opacity:.4;cursor:not-allowed;}
+    .countdown-overlay{position:fixed;inset:0;z-index:200;background:rgba(5,8,16,.9);display:none;align-items:center;justify-content:center;flex-direction:column;gap:1rem;}
+    .countdown-overlay.show{display:flex;}
+    .countdown-num{font-family:'Cinzel Decorative',serif;font-size:8rem;color:var(--moon);text-shadow:0 0 40px rgba(100,160,255,.5);animation:countPulse .8s ease;}
+    @keyframes countPulse{0%{transform:scale(1.5);opacity:0}100%{transform:scale(1);opacity:1}}
+    .countdown-text{font-family:'Cinzel',serif;font-size:.9rem;letter-spacing:.3em;color:var(--accent);}
+    .toast{position:fixed;bottom:2rem;right:2rem;z-index:999;background:var(--fog);border:1px solid rgba(74,111,165,.3);padding:.9rem 1.4rem;font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);display:none;animation:fadeUp .3s ease;}
+    .toast.show{display:block;}
+    @media(max-width:800px){.room-layout{grid-template-columns:1fr;}.players-grid{grid-template-columns:repeat(2,1fr);}}
+  </style>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="moon-bg"></div>
+</div>
+
+<div class="countdown-overlay" id="countdownOverlay">
+  <div class="countdown-num" id="countdownNum">3</div>
+  <div class="countdown-text">La partie commence...</div>
+</div>
+
+<div class="topbar">
+  <a href="lobby.html" class="topbar-logo">LYCAN</a>
+  <div class="topbar-info" id="topbarInfo">Salle d'attente</div>
+  <button class="btn-leave" onclick="leaveRoom()">✕ Quitter</button>
+</div>
+
+<div class="content">
+  <div class="room-header">
+    <div class="room-title" id="roomTitle">...</div>
+    <div style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.2em;color:var(--text-dim);margin-bottom:.5rem">Hôte : <span id="hostName">...</span></div>
+    <div class="room-code-wrap" onclick="copyCode()" title="Copier le code">
+      Code : <span class="room-code" id="roomCode">...</span> 📋
+    </div>
+  </div>
+
+  <div class="players-bar">
+    <div class="bar-label"><span>Joueurs</span><span id="barCount">0 / ?</span></div>
+    <div class="bar-track"><div class="bar-fill" id="barFill" style="width:5%"></div></div>
+  </div>
+
+  <div class="room-layout">
+    <div>
+      <div class="section-label">Joueurs connectés</div>
+      <div class="players-grid" id="playersGrid"></div>
+      <div class="section-label">Discussion</div>
+      <div class="chat-box">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Envoyer un message..." maxlength="120" onkeydown="if(event.key==='Enter')sendChat()"/>
+          <button class="chat-send" onclick="sendChat()">Envoyer</button>
+        </div>
+      </div>
+    </div>
+    <div class="right-panel">
+      <div class="info-box">
+        <div class="info-title">Infos de la partie</div>
+        <div class="info-row"><span class="info-key">Mode</span><span class="info-val" id="infoMode">—</span></div>
+        <div class="info-row"><span class="info-key">Min. joueurs</span><span class="info-val" id="infoMin">—</span></div>
+        <div class="info-row"><span class="info-key">Max. joueurs</span><span class="info-val" id="infoMax">—</span></div>
+        <div class="info-row"><span class="info-key">Prêts</span><span class="info-val" id="infoReady" style="color:var(--success)">0 / 0</span></div>
+      </div>
+      <div class="info-box">
+        <div class="info-title">Rôles prévus</div>
+        <div class="roles-list" id="rolesList"></div>
+      </div>
+      <div class="actions">
+        <button class="btn-ready" id="btnReady" onclick="toggleReady()">✓ Je suis prêt</button>
+        <button class="btn-start" id="btnStart" onclick="startGame()" disabled>▶ Lancer la partie</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpY3lqYWhreGlqa3hyeHRtamhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTczNjksImV4cCI6MjA4ODU5MzM2OX0.LnOf0QkBzdWZUh-IpVC9XNv7SP_SWpIwX-DTzT7y0q4';
+  const db=supabase.createClient(SURL,SKEY);
+
+  const user=JSON.parse(localStorage.getItem('lycan_user')||'null');
+  if(!user) window.location.href='login.html';
+
+  const params=new URLSearchParams(window.location.search);
+  const lobbyId=params.get('lobbyId');
+  const roomData={
+    title:params.get('name')||'Partie',
+    host:params.get('host')||'',
+    min:parseInt(params.get('min')||'6'),
+    max:parseInt(params.get('max')||'12'),
+    vis:params.get('vis')||'public',
+    mode:params.get('mode')||'Standard',
+    code:params.get('code')||'LYCAN-0000',
+  };
+  const isHost=roomData.host===user.username;
+  let myReady=false;
+  let currentPlayers=[];
+
+  // Stars
+  const sc=document.getElementById('stars');
+  for(let i=0;i<80;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*70}%;left:${Math.random()*100}%;--op:${Math.random()*.5+.3};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+  window.addEventListener('load',async()=>{
+    document.getElementById('roomTitle').textContent=roomData.title;
+    document.getElementById('hostName').textContent=roomData.host;
+    document.getElementById('roomCode').textContent=roomData.code;
+    document.getElementById('topbarInfo').textContent=roomData.title;
+    document.getElementById('infoMode').textContent=roomData.mode;
+    document.getElementById('infoMin').textContent=roomData.min;
+    document.getElementById('infoMax').textContent=roomData.max;
+    renderRoles();
+    await loadPlayers();
+    addSystemMsg('Tu as rejoint la salle.');
+    if(isHost) addSystemMsg('Tu es l\'hôte. Lance la partie quand tout le monde est prêt !');
+
+    // Realtime players
+    if(lobbyId){
+      db.channel('room-'+lobbyId)
+        .on('postgres_changes',{event:'*',schema:'public',table:'lobby_players',filter:`lobby_id=eq.${lobbyId}`},()=>{
+          loadPlayers();
+        })
+        .subscribe();
+    }
+  });
+
+  let emptyLobbyTimer=null;
+
+  async function loadPlayers(){
+    if(!lobbyId){renderPlayers([]);return;}
+    const{data}=await db.from('lobby_players').select('username,ready').eq('lobby_id',lobbyId);
+    currentPlayers=data||[];
+    renderPlayers(currentPlayers);
+    updateReadyCount(currentPlayers);
+
+    // Fermeture automatique si lobby vide
+    if(currentPlayers.length===0){
+      if(!emptyLobbyTimer){
+        emptyLobbyTimer=setTimeout(async()=>{
+          if(lobbyId){
+            await db.from('lobbies').update({status:'closed'}).eq('id',lobbyId);
+            await db.from('lobby_players').delete().eq('lobby_id',lobbyId);
+          }
+          window.location.href='lobby.html';
+        },3000);
+        // Afficher un compte à rebours
+        addSystemMsg('⏳ Lobby vide — fermeture dans 3 secondes...');
+      }
+    } else {
+      if(emptyLobbyTimer){
+        clearTimeout(emptyLobbyTimer);
+        emptyLobbyTimer=null;
+      }
+    }
+  }
+
+  function renderPlayers(players){
+    const grid=document.getElementById('playersGrid');
+    grid.innerHTML='';
+    const pct=Math.max(8,(players.length/roomData.max)*100);
+    document.getElementById('barFill').style.width=pct+'%';
+    document.getElementById('barCount').textContent=players.length+' / '+roomData.max;
+
+    for(let i=0;i<roomData.max;i++){
+      const p=players[i];
+      const slot=document.createElement('div');
+      if(p){
+        const isMe=p.username===user.username;
+        const isH=p.username===roomData.host;
+        slot.className='player-slot filled'+(isMe?' me':'')+(isH?' host':'');
+        slot.innerHTML=`
+          <div class="slot-avatar">🐺</div>
+          <div class="slot-name ${isMe?'me-name':''}">${p.username}${isMe?' (Moi)':''}</div>
+          <div class="slot-ready ${p.ready?'ready':'waiting'}">${p.ready?'✓ Prêt':'⏳ En attente'}</div>`;
+      }else{
+        slot.className='player-slot empty';
+        slot.innerHTML='<div class="slot-empty-label">Slot libre...</div>';
+      }
+      grid.appendChild(slot);
+    }
+  }
+
+  function updateReadyCount(players){
+    const readyCount=players.filter(p=>p.ready).length;
+    document.getElementById('infoReady').textContent=readyCount+' / '+players.length;
+    const canStart=players.length>=roomData.min&&readyCount===players.length&&players.length>0;
+    const btn=document.getElementById('btnStart');
+    btn.disabled=!(isHost&&canStart);
+    if(isHost&&canStart) btn.style.boxShadow='0 0 25px rgba(74,111,165,.7)';
+  }
+
+  const rolesConfig={
+    'Standard':[{e:'🐺',n:'Loups-Garous',c:'2'},{e:'🏘️',n:'Villageois',c:'3+'},{e:'🔮',n:'Voyante',c:'1'}],
+    'Avancé':[{e:'🐺',n:'Loups-Garous',c:'2-3'},{e:'🏘️',n:'Villageois',c:'3+'},{e:'🔮',n:'Voyante',c:'1'},{e:'💉',n:'Sorcière',c:'1'},{e:'🏹',n:'Chasseur',c:'1'}],
+    'Expert':[{e:'🐺',n:'Loups-Garous',c:'3-4'},{e:'🏘️',n:'Villageois',c:'4+'},{e:'🔮',n:'Voyante',c:'1'},{e:'💉',n:'Sorcière',c:'1'},{e:'🏹',n:'Chasseur',c:'1'},{e:'💘',n:'Cupidon',c:'1'}],
+  };
+
+  function renderRoles(){
+    const roles=rolesConfig[roomData.mode]||rolesConfig['Standard'];
+    document.getElementById('rolesList').innerHTML=roles.map(r=>`<div class="role-row"><span style="font-size:1.1rem">${r.e}</span><span style="flex:1;font-size:.75rem;color:var(--silver)">${r.n}</span><span class="role-count">×${r.c}</span></div>`).join('');
+  }
+
+  async function toggleReady(){
+    myReady=!myReady;
+    if(lobbyId){
+      await db.from('lobby_players').update({ready:myReady}).eq('lobby_id',lobbyId).eq('username',user.username);
+    }
+    const btn=document.getElementById('btnReady');
+    if(myReady){btn.textContent='✓ Prêt ! (Annuler)';btn.classList.add('is-ready');addSystemMsg('Tu es prêt !');}
+    else{btn.textContent='✓ Je suis prêt';btn.classList.remove('is-ready');addSystemMsg('Tu as annulé ton statut prêt.');}
+  }
+
+  function closeOverlay(id){document.getElementById(id).classList.remove('show');}
+
+  // Toutes les définitions de rôles disponibles
+  const ALL_ROLES=[
+    {id:'loup',emoji:'🐺',name:'Loup-Garou',desc:'Chaque nuit, choisis une victime avec tes alliés. Reste discret le jour.',isWolf:true},
+    {id:'villageois',emoji:'🏘️',name:'Villageois',desc:'Tu n\'as aucun pouvoir spécial. Observe et convaincs le village.',isWolf:false},
+    {id:'voyante',emoji:'🔮',name:'Voyante',desc:'Chaque nuit, tu peux découvrir l\'identité secrète d\'un joueur.',isWolf:false},
+    {id:'sorciere',emoji:'💉',name:'Sorcière',desc:'Tu possèdes une potion de vie et une de mort. Utilise-les à bon escient.',isWolf:false},
+    {id:'chasseur',emoji:'🏹',name:'Chasseur',desc:'Si tu es éliminé, tu peux emporter un joueur avec toi.',isWolf:false},
+    {id:'cupidon',emoji:'💘',name:'Cupidon',desc:'La première nuit, désigne deux amoureux. S\'ils meurent, ils mourront ensemble.',isWolf:false},
+    {id:'salvateur',emoji:'🛡',name:'Salvateur',desc:'Chaque nuit, tu peux protéger un joueur de l\'attaque des loups.',isWolf:false},
+    {id:'idiot',emoji:'🤡',name:'Idiot du Village',desc:'Si le village vote pour t\'éliminer, tu révèles ton identité et gardes ta vie.',isWolf:false},
+    {id:'ancien',emoji:'👴',name:'Ancien',desc:'Tu survives à la première attaque des loups.',isWolf:false},
+    {id:'corbeau',emoji:'🪶',name:'Corbeau',desc:'Chaque nuit, tu peux ajouter 2 votes contre un joueur le jour suivant.',isWolf:false},
+  ];
+
+  function buildRolePool(players,mode,composition){
+    // Si une composition custom existe, on l'utilise
+    if(composition&&Object.keys(composition).length>0){
+      const pool=[];
+      for(const[roleId,count] of Object.entries(composition)){
+        const roleDef=ALL_ROLES.find(r=>r.id===roleId);
+        if(roleDef) for(let i=0;i<count;i++) pool.push(roleDef);
+      }
+      // Compléter avec des villageois si pas assez
+      while(pool.length<players.length) pool.push(ALL_ROLES.find(r=>r.id==='villageois'));
+      return pool.slice(0,players.length);
+    }
+    // Sinon composition auto selon le mode et nb de joueurs
+    const n=players.length;
+    const wolves=Math.max(1,Math.floor(n/4));
+    const pool=[];
+    for(let i=0;i<wolves;i++) pool.push(ALL_ROLES.find(r=>r.id==='loup'));
+    if(mode!=='Standard'){pool.push(ALL_ROLES.find(r=>r.id==='voyante'));}
+    if(mode==='Avancé'||mode==='Expert'){pool.push(ALL_ROLES.find(r=>r.id==='sorciere'));pool.push(ALL_ROLES.find(r=>r.id==='chasseur'));}
+    if(mode==='Expert'){pool.push(ALL_ROLES.find(r=>r.id==='cupidon'));pool.push(ALL_ROLES.find(r=>r.id==='salvateur'));}
+    while(pool.length<n) pool.push(ALL_ROLES.find(r=>r.id==='villageois'));
+    return pool.slice(0,n);
+  }
+
+  function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
+
+  async function startGame(){
+    if(!isHost){showToast('Seul l\'hôte peut lancer la partie.');return;}
+    if(currentPlayers.length<roomData.min){showToast('❌ Pas assez de joueurs ('+roomData.min+' minimum)');return;}
+    const allReady=currentPlayers.every(p=>p.ready);
+    if(!allReady){showToast('❌ Tous les joueurs doivent être prêts !');return;}
+
+    // Récupérer la composition custom si elle existe
+    let composition={};
+    if(lobbyId){
+      const{data:lobbyData}=await db.from('lobbies').select('composition').eq('id',lobbyId).single();
+      composition=lobbyData?.composition||{};
+    }
+
+    // Distribuer les rôles aléatoirement
+    const pool=shuffle(buildRolePool(currentPlayers,roomData.mode,composition));
+    const assignments={};
+    currentPlayers.forEach((p,i)=>{assignments[p.username]=pool[i];});
+
+    // Sauvegarder les rôles dans Supabase pour chaque joueur
+    for(const[username,role] of Object.entries(assignments)){
+      await db.from('lobby_players').update({role:role.id}).eq('lobby_id',lobbyId).eq('username',username);
+    }
+
+    // Mettre à jour le statut du lobby
+    if(lobbyId) await db.from('lobbies').update({status:'playing'}).eq('id',lobbyId);
+    startCountdown();
+  }
+
+  function startCountdown(){
+    const overlay=document.getElementById('countdownOverlay');
+    const num=document.getElementById('countdownNum');
+    overlay.classList.add('show');
+    let count=3;
+    num.textContent=count;
+    const iv=setInterval(()=>{
+      count--;
+      if(count<=0){
+        clearInterval(iv);
+        num.textContent='🐺';
+        setTimeout(()=>{
+          overlay.classList.remove('show');
+          const url=`game-start.html?lobbyId=${lobbyId||''}&name=${encodeURIComponent(roomData.title)}&players=${currentPlayers.length}`;
+          window.location.href=url;
+        },800);
+      }else{
+        num.textContent=count;
+        num.style.animation='none';
+        setTimeout(()=>num.style.animation='countPulse .8s ease',10);
+      }
+    },1000);
+  }
+
+  function addSystemMsg(text){
+    const el=document.getElementById('chatMessages');
+    const msg=document.createElement('div');
+    msg.className='chat-msg system';
+    msg.textContent='— '+text;
+    el.appendChild(msg);
+    el.scrollTop=el.scrollHeight;
+  }
+
+  function sendChat(){
+    const input=document.getElementById('chatInput');
+    const val=input.value.trim();
+    if(!val)return;
+    const el=document.getElementById('chatMessages');
+    const msg=document.createElement('div');
+    msg.className='chat-msg';
+    msg.innerHTML=`<span class="chat-user me">${user.username} :</span> ${val}`;
+    el.appendChild(msg);
+    el.scrollTop=el.scrollHeight;
+    input.value='';
+  }
+
+  function copyCode(){
+    navigator.clipboard.writeText(roomData.code).then(()=>showToast('✓ Code copié : '+roomData.code));
+  }
+
+  async function leaveRoom(){
+    if(confirm('Quitter la salle ?')){
+      if(lobbyId) await db.from('lobby_players').delete().eq('lobby_id',lobbyId).eq('username',user.username);
+      window.location.href='lobby.html';
+    }
+  }
+
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
