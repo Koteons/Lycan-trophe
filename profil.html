@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Profil</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --night:#050810;--deep:#080d1a;--fog:#0b1228;--mist:#111d35;
+      --blue-dark:#0d1b3e;--blue-mid:#132044;--blue-glow:#1a3a6e;
+      --accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;
+      --fire:#c0692a;--fire2:#e07b30;--fire3:#f5a623;
+      --text:#b8ccdd;--text-dim:#5a7080;
+      --error:#e05555;--success:#4aff80;--warn:#f5a623;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;cursor:crosshair;overflow-x:hidden;}
+
+    /* BG */
+    .bg-fixed{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 60%);}
+    .moon-orb{position:absolute;top:5%;right:8%;width:55px;height:55px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8f0ff,#c2d4f0 50%,#8aabcf);box-shadow:0 0 30px rgba(180,210,255,.4),0 0 80px rgba(100,160,255,.2);animation:moonPulse 6s infinite ease-in-out;}
+    @keyframes moonPulse{0%,100%{box-shadow:0 0 30px rgba(180,210,255,.4),0 0 80px rgba(100,160,255,.2)}50%{box-shadow:0 0 50px rgba(180,210,255,.6),0 0 120px rgba(100,160,255,.35)}}
+    .stars-bg{position:absolute;inset:0;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+    .tree-line{position:absolute;bottom:0;width:100%;}
+
+    /* NAV */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:1.2rem 3rem;background:linear-gradient(to bottom,rgba(5,8,16,.95),transparent);backdrop-filter:blur(4px);}
+    .nav-logo{font-family:'Cinzel Decorative',serif;font-size:1.3rem;letter-spacing:.25em;color:var(--moon);text-shadow:0 0 20px rgba(100,160,255,.5);text-decoration:none;}
+    .nav-links{display:flex;gap:2rem;list-style:none;align-items:center;}
+    .nav-links a{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--silver);text-decoration:none;transition:color .3s;}
+    .nav-links a:hover{color:var(--moon);}
+    .nav-links a.active{color:var(--moon);border-bottom:1px solid var(--accent);padding-bottom:2px;}
+
+    /* LAYOUT */
+    .page{position:relative;z-index:10;padding:7rem 3rem 4rem;max-width:1300px;margin:0 auto;display:grid;grid-template-columns:300px 1fr;gap:2.5rem;align-items:start;}
+
+    /* PROFILE CARD */
+    .profile-card{background:linear-gradient(160deg,rgba(8,13,26,.97),rgba(11,18,40,.95));border:1px solid rgba(74,111,165,.25);padding:2rem;position:sticky;top:7rem;}
+    .profile-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .avatar-wrap{text-align:center;margin-bottom:1.5rem;position:relative;}
+    .avatar-ring{width:100px;height:100px;border-radius:50%;border:2px solid rgba(74,111,165,.4);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;font-size:3rem;background:rgba(10,20,50,.6);position:relative;overflow:hidden;}
+    .avatar-ring .aura{position:absolute;inset:-6px;border-radius:50%;animation:auraGlow 3s infinite ease-in-out;}
+    @keyframes auraGlow{0%,100%{opacity:.4}50%{opacity:.9}}
+    .aura.blue{background:radial-gradient(circle,transparent 40%,rgba(74,111,165,.5) 70%,transparent 100%);}
+    .aura.gold{background:radial-gradient(circle,transparent 40%,rgba(245,166,35,.5) 70%,transparent 100%);}
+    .aura.red{background:radial-gradient(circle,transparent 40%,rgba(224,85,85,.5) 70%,transparent 100%);}
+    .player-name{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);letter-spacing:.15em;margin-bottom:.3rem;}
+    .player-badge{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:1.2rem;}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1.5rem;}
+    .stat-box{background:rgba(5,8,16,.6);border:1px solid rgba(74,111,165,.15);padding:.8rem;text-align:center;}
+    .stat-val{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);}
+    .stat-lbl{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);margin-top:.2rem;}
+    .currency-row{display:flex;gap:.8rem;margin-bottom:1.5rem;}
+    .curr{flex:1;background:rgba(5,8,16,.6);border:1px solid rgba(74,111,165,.15);padding:.8rem;text-align:center;}
+    .curr-val{font-family:'Cinzel',serif;font-size:1rem;color:var(--fire3);}
+    .curr-icon{font-size:1.2rem;display:block;margin-bottom:.3rem;}
+    .curr-lbl{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.15em;text-transform:uppercase;color:var(--text-dim);}
+    .btn-shop{display:block;text-align:center;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;padding:.9rem;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);text-decoration:none;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);transition:all .3s;}
+    .btn-shop:hover{box-shadow:0 0 25px rgba(74,111,165,.5);}
+    .equipped-label{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.25em;text-transform:uppercase;color:var(--text-dim);margin:1.2rem 0 .6rem;}
+    .equipped-items{display:flex;gap:.5rem;flex-wrap:wrap;}
+    .eq-item{background:rgba(10,20,50,.8);border:1px solid rgba(74,111,165,.2);padding:.4rem .7rem;font-size:.75rem;font-family:'Cinzel',serif;color:var(--silver);}
+
+    /* RIGHT PANEL */
+    .right-panel{display:flex;flex-direction:column;gap:1.5rem;}
+
+    /* SECTION TITLES */
+    .section-head{display:flex;align-items:center;gap:1rem;margin-bottom:1.2rem;}
+    .section-title{font-family:'Cinzel Decorative',serif;font-size:.95rem;letter-spacing:.2em;color:var(--moon);}
+    .section-line{flex:1;height:1px;background:linear-gradient(to right,rgba(74,111,165,.4),transparent);}
+    .section-badge{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.15em;background:rgba(74,111,165,.2);border:1px solid rgba(74,111,165,.3);color:var(--accent);padding:.2rem .6rem;}
+
+    /* MAILBOX */
+    .mailbox-panel{background:linear-gradient(160deg,rgba(8,13,26,.97),rgba(11,18,40,.95));border:1px solid rgba(74,111,165,.25);padding:2rem;position:relative;}
+    .mailbox-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .mail-tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid rgba(74,111,165,.2);}
+    .mail-tab{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);padding:.7rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .3s;display:flex;align-items:center;gap:.5rem;background:none;border-top:none;border-left:none;border-right:none;}
+    .mail-tab.active{color:var(--moon);border-bottom-color:var(--accent);}
+    .mail-tab .badge{background:rgba(224,85,85,.3);border:1px solid rgba(224,85,85,.4);color:#ff9999;font-size:.55rem;padding:.1rem .4rem;border-radius:2px;}
+    .mail-tab .badge.green{background:rgba(74,255,128,.1);border-color:rgba(74,255,128,.3);color:var(--success);}
+    .mail-content{display:none;}
+    .mail-content.active{display:block;}
+    .mail-empty{text-align:center;padding:3rem;color:var(--text-dim);font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;}
+    .mail-empty .icon{font-size:2.5rem;display:block;margin-bottom:.8rem;opacity:.4;}
+
+    /* MAIL ITEMS */
+    .mail-item{border:1px solid rgba(74,111,165,.15);background:rgba(5,8,16,.5);margin-bottom:.8rem;display:flex;align-items:stretch;overflow:hidden;transition:border-color .3s;cursor:pointer;}
+    .mail-item:hover{border-color:rgba(74,111,165,.35);}
+    .mail-item.unread{border-left:3px solid var(--error);}
+    .mail-item.unread-warn{border-left:3px solid var(--warn);}
+    .mail-item.unread-ok{border-left:3px solid var(--success);}
+    .mail-item-icon{width:52px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;background:rgba(10,20,50,.4);flex-shrink:0;}
+    .mail-item-body{flex:1;padding:.9rem 1rem;}
+    .mail-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem;}
+    .mail-item-title{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.1em;color:var(--moon);}
+    .mail-item-date{font-size:.65rem;color:var(--text-dim);}
+    .mail-item-text{font-size:.8rem;color:var(--text);line-height:1.5;}
+    .mail-item-tag{display:inline-block;font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.15em;text-transform:uppercase;padding:.2rem .6rem;margin-top:.5rem;}
+    .tag-sanction{background:rgba(224,85,85,.15);border:1px solid rgba(224,85,85,.3);color:var(--error);}
+    .tag-warn{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);color:var(--warn);}
+    .tag-info{background:rgba(74,111,165,.15);border:1px solid rgba(74,111,165,.3);color:var(--accent);}
+    .tag-resolved{background:rgba(74,255,128,.08);border:1px solid rgba(74,255,128,.25);color:var(--success);}
+    .mail-item-arrow{display:flex;align-items:center;padding:0 1rem;color:var(--text-dim);font-size:.8rem;}
+
+    /* MAIL DETAIL MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(5,8,16,.85);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+    .modal-overlay.open{display:flex;}
+    .modal{background:linear-gradient(160deg,rgba(8,13,26,.99),rgba(11,18,40,.97));border:1px solid rgba(74,111,165,.3);max-width:560px;width:90%;padding:2.5rem;position:relative;animation:modalIn .25s ease;}
+    @keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    .modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:1px solid rgba(74,111,165,.3);color:var(--text-dim);font-size:.8rem;padding:.3rem .7rem;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:.1em;transition:all .3s;}
+    .modal-close:hover{color:var(--moon);border-color:var(--accent);}
+    .modal-icon{font-size:2.5rem;text-align:center;margin-bottom:1rem;}
+    .modal-title{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);text-align:center;margin-bottom:.4rem;letter-spacing:.15em;}
+    .modal-meta{text-align:center;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.2em;color:var(--text-dim);margin-bottom:1.5rem;}
+    .modal-body{font-size:.85rem;line-height:1.8;color:var(--text);background:rgba(5,8,16,.5);border:1px solid rgba(74,111,165,.1);padding:1.2rem;margin-bottom:1.5rem;}
+    .modal-duration{display:flex;align-items:center;gap:.8rem;background:rgba(224,85,85,.08);border:1px solid rgba(224,85,85,.2);padding:.9rem 1.2rem;margin-bottom:1rem;}
+    .modal-duration.ok{background:rgba(74,255,128,.06);border-color:rgba(74,255,128,.2);}
+    .modal-duration-label{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--text-dim);}
+    .modal-duration-val{font-family:'Cinzel Decorative',serif;font-size:.9rem;color:var(--error);}
+    .modal-duration-val.ok{color:var(--success);}
+
+    /* PAGINATION */
+    .mail-pagination{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:1rem;}
+    .page-btn{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;background:rgba(10,20,50,.6);border:1px solid rgba(74,111,165,.2);color:var(--text-dim);padding:.4rem .8rem;cursor:pointer;transition:all .3s;}
+    .page-btn:hover,.page-btn.active{color:var(--moon);border-color:var(--accent);background:rgba(26,58,110,.3);}
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar{width:4px;}
+    ::-webkit-scrollbar-track{background:var(--deep);}
+    ::-webkit-scrollbar-thumb{background:var(--blue-glow);border-radius:2px;}
+
+    /* ANIMATIONS */
+    .fade-in{animation:fadeIn .5s ease both;}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+    /* RESPONSIVE */
+    @media(max-width:900px){.page{grid-template-columns:1fr;}.profile-card{position:static;}}
+  </style>
+</head>
+<body>
+
+<div class="bg-fixed">
+  <div class="bg-sky"></div>
+  <div class="stars-bg" id="stars"></div>
+  <div class="moon-orb"></div>
+  <svg class="tree-line" viewBox="0 0 1440 160" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <g fill="#0a1020" opacity="0.6"><polygon points="100,160 130,70 160,160"/><polygon points="280,160 315,55 350,160"/><polygon points="460,160 495,65 530,160"/><polygon points="650,160 685,50 720,160"/><polygon points="840,160 875,60 910,160"/><polygon points="1030,160 1065,52 1100,160"/><polygon points="1220,160 1255,68 1290,160"/></g>
+    <g fill="#06090f"><polygon points="0,160 40,55 80,160"/><polygon points="180,160 225,40 270,160"/><polygon points="380,160 425,48 470,160"/><polygon points="580,160 625,38 670,160"/><polygon points="780,160 825,45 870,160"/><polygon points="980,160 1025,42 1070,160"/><polygon points="1180,160 1225,50 1270,160"/><polygon points="1370,160 1440,58 1440,160"/></g>
+    <rect x="0" y="148" width="1440" height="12" fill="#06090f"/>
+  </svg>
+</div>
+
+<nav>
+  <a href="index.html" class="nav-logo">LYCAN</a>
+  <ul class="nav-links">
+    <li><a href="lobby.html">Lobby</a></li>
+    <li><a href="shop.html">Boutique</a></li>
+    <li><a href="profile.html" class="active">Profil</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <!-- PROFILE CARD -->
+  <aside class="profile-card fade-in">
+    <div class="avatar-wrap">
+      <div class="avatar-ring">
+        <div class="aura gold" id="equippedAura"></div>
+        <span id="playerAvatar">🐺</span>
+      </div>
+      <div class="player-name" id="playerName">LoupSolitaire</div>
+      <div class="player-badge" id="playerBadge">Chasseur de Nuit</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-val" id="statGames">0</div><div class="stat-lbl">Parties</div></div>
+      <div class="stat-box"><div class="stat-val" id="statWins">0</div><div class="stat-lbl">Victoires</div></div>
+      <div class="stat-box"><div class="stat-val" id="statPoints">0</div><div class="stat-lbl">Points</div></div>
+      <div class="stat-box"><div class="stat-val" id="statWinRate">0%</div><div class="stat-lbl">Win Rate</div></div>
+    </div>
+    <div class="currency-row">
+      <div class="curr"><span class="curr-icon">🪙</span><div class="curr-val" id="playerCoins">150</div><div class="curr-lbl">Coins</div></div>
+      <div class="curr"><span class="curr-icon">✨</span><div class="curr-val" id="playerGold">320</div><div class="curr-lbl">Gold</div></div>
+    </div>
+    <a href="shop.html" class="btn-shop">🛒 Ouvrir la Boutique</a>
+    <div class="equipped-label">Équipement actif</div>
+    <div class="equipped-items" id="equippedItems">
+      <span class="eq-item">🐺 Loup classique</span>
+      <span class="eq-item">✨ Aura dorée</span>
+    </div>
+  </aside>
+
+  <!-- RIGHT: MAILBOX -->
+  <div class="right-panel">
+    <div class="mailbox-panel fade-in">
+      <div class="section-head">
+        <div class="section-title">Boîte de Réception</div>
+        <div class="section-line"></div>
+        <div class="section-badge" id="unreadCount">3 non lus</div>
+      </div>
+
+      <div class="mail-tabs">
+        <button class="mail-tab active" onclick="switchMailTab('sanctions')" id="tab-sanctions">
+          ⚔️ Sanctions
+          <span class="badge" id="sanctionsBadge">2</span>
+        </button>
+        <button class="mail-tab" onclick="switchMailTab('signalements')" id="tab-signalements">
+          📋 Signalements traités
+          <span class="badge green" id="signalBadge">1</span>
+        </button>
+      </div>
+
+      <!-- SANCTIONS TAB -->
+      <div class="mail-content active" id="content-sanctions">
+        <div id="sanctionsList"></div>
+        <div class="mail-pagination" id="sanctionsPagination"></div>
+      </div>
+
+      <!-- SIGNALEMENTS TAB -->
+      <div class="mail-content" id="content-signalements">
+        <div id="signalList"></div>
+        <div class="mail-pagination" id="signalPagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETAIL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <button class="modal-close" onclick="closeModal()">✕ Fermer</button>
+    <div class="modal-icon" id="modalIcon">📨</div>
+    <div class="modal-title" id="modalTitle">Titre</div>
+    <div class="modal-meta" id="modalMeta">Date</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div id="modalExtra"></div>
+  </div>
+</div>
+
+<script>
+const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+const SKEY='sb_publishable_5s9soZN5O0Mp4nuWHlXXYA_Xv979vZj';
+const db=supabase.createClient(SURL,SKEY);
+
+// Stars
+const sc=document.getElementById('stars');
+for(let i=0;i<100;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*80}%;left:${Math.random()*100}%;--op:${Math.random()*.5+.3};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+let MOCK_SANCTIONS=[];
+let MOCK_SIGNALEMENTS=[];
+let currentModal=null;
+let currentPlayerId=null;
+
+function switchMailTab(tab){
+  document.querySelectorAll('.mail-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mail-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.getElementById('content-'+tab).classList.add('active');
+}
+
+function renderSanctions(){
+  const el=document.getElementById('sanctionsList');
+  if(!MOCK_SANCTIONS.length){el.innerHTML='<div class="mail-empty"><span class="icon">📭</span>Aucune sanction — Continue comme ça !</div>';return;}
+  el.innerHTML=MOCK_SANCTIONS.map(m=>`
+    <div class="mail-item ${m.unread?'unread'+(m.type==='warn'?'-warn':m.type==='info'?'':'')+''  :''}" onclick="openModal('s',${m.id})">
+      <div class="mail-item-icon">${m.icon}</div>
+      <div class="mail-item-body">
+        <div class="mail-item-header">
+          <div class="mail-item-title">${m.unread?'<strong>':''} ${m.title} ${m.unread?'</strong>':''}</div>
+          <div class="mail-item-date">${m.date}</div>
+        </div>
+        <div class="mail-item-text">${m.body.substring(0,90)}...</div>
+        <span class="mail-item-tag ${m.tag}">${m.type==='warn'?'Avertissement':m.type==='sanction'?'Sanction':'Information'}</span>
+      </div>
+      <div class="mail-item-arrow">›</div>
+    </div>`).join('');
+  document.getElementById('sanctionsBadge').textContent=MOCK_SANCTIONS.filter(m=>m.unread).length||'';
+}
+
+function renderSignalements(){
+  const el=document.getElementById('signalList');
+  if(!MOCK_SIGNALEMENTS.length){el.innerHTML='<div class="mail-empty"><span class="icon">📋</span>Aucun signalement traité pour le moment.</div>';return;}
+  el.innerHTML=MOCK_SIGNALEMENTS.map(m=>`
+    <div class="mail-item ${m.unread?'unread-ok':''}" onclick="openModal('r',${m.id})">
+      <div class="mail-item-icon">${m.icon}</div>
+      <div class="mail-item-body">
+        <div class="mail-item-header">
+          <div class="mail-item-title">${m.unread?'<strong>':''} ${m.title} ${m.unread?'</strong>':''}</div>
+          <div class="mail-item-date">${m.date}</div>
+        </div>
+        <div class="mail-item-text">${m.body.substring(0,90)}...</div>
+        <span class="mail-item-tag ${m.tag}">${m.type==='resolved'?'Résolu':'En cours'}</span>
+      </div>
+      <div class="mail-item-arrow">›</div>
+    </div>`).join('');
+  document.getElementById('signalBadge').textContent=MOCK_SIGNALEMENTS.filter(m=>m.unread).length||'';
+}
+
+function openModal(type,id){
+  const item=type==='s'?MOCK_SANCTIONS.find(m=>m.id===id):MOCK_SIGNALEMENTS.find(m=>m.id===id);
+  if(!item)return;
+  document.getElementById('modalIcon').textContent=item.icon;
+  document.getElementById('modalTitle').textContent=item.title;
+  document.getElementById('modalMeta').textContent='Reçu le '+item.date+' — LYCAN Modération';
+  document.getElementById('modalBody').textContent=item.body;
+  const extra=document.getElementById('modalExtra');
+  if(item.duration){
+    extra.innerHTML=`<div class="modal-duration ${item.durationOk?'ok':''}"><div><div class="modal-duration-label">Durée de la sanction</div><div class="modal-duration-val ${item.durationOk?'ok':''}">${item.duration}</div></div></div>`;
+  }else if(type==='r'){
+    extra.innerHTML=`<div class="modal-duration ok"><div><div class="modal-duration-label">Statut du signalement</div><div class="modal-duration-val ok">Traité avec succès ✓</div></div></div>`;
+  }else{extra.innerHTML='';}
+  if(item.unread){
+    item.unread=false;
+    const table=type==='s'?'sanctions':'report_notifications';
+    markAsRead(table, item.dbId);
+  }
+  document.getElementById('modalOverlay').classList.add('open');
+  renderSanctions();renderSignalements();
+  updateUnreadCount();
+}
+
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modalOverlay')||e.currentTarget.classList.contains('modal-close')){
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+}
+
+function updateUnreadCount(){
+  const total=MOCK_SANCTIONS.filter(m=>m.unread).length+MOCK_SIGNALEMENTS.filter(m=>m.unread).length;
+  document.getElementById('unreadCount').textContent=total>0?total+' non lu'+(total>1?'s':''):'Tout lu';
+}
+
+async function loadProfile(){
+  const u=JSON.parse(localStorage.getItem('lycan_user')||'null');
+  if(!u){window.location.href='login.html';return;}
+  currentPlayerId=u.id;
+
+  // Charger données fraîches depuis Supabase
+  try{
+    const{data}=await db.from('players').select('*').eq('id',u.id).single();
+    if(data){
+      localStorage.setItem('lycan_user',JSON.stringify(data));
+      document.getElementById('playerName').textContent=data.username||'LoupSolitaire';
+      document.getElementById('playerAvatar').textContent=data.avatar||'🐺';
+      document.getElementById('playerCoins').textContent=data.coins||0;
+      document.getElementById('playerGold').textContent=data.gold||0;
+      document.getElementById('statGames').textContent=data.games||0;
+      document.getElementById('statWins').textContent=data.wins||0;
+      document.getElementById('statPoints').textContent=data.points||0;
+      const wr=data.games>0?Math.round((data.wins/data.games)*100):0;
+      document.getElementById('statWinRate').textContent=wr+'%';
+      if(wr>=60)document.getElementById('playerBadge').textContent='Maître des Loups';
+      else if(wr>=40)document.getElementById('playerBadge').textContent='Chasseur de Nuit';
+      else document.getElementById('playerBadge').textContent='Loup Novice';
+    }
+  }catch(e){
+    // Fallback localStorage
+    document.getElementById('playerName').textContent=u.username||'LoupSolitaire';
+    document.getElementById('playerAvatar').textContent=u.avatar||'🐺';
+    document.getElementById('playerCoins').textContent=u.coins||0;
+    document.getElementById('playerGold').textContent=u.gold||0;
+  }
+
+  // Charger sanctions depuis Supabase
+  try{
+    const{data:sanctions}=await db.from('sanctions')
+      .select('*').eq('player_id',u.id).order('created_at',{ascending:false});
+    MOCK_SANCTIONS=(sanctions||[]).map(s=>({
+      id:s.id,
+      icon:s.type==='sanction'?'⛔':s.type==='warn'?'🚫':'ℹ️',
+      title:s.title,
+      date:new Date(s.created_at).toLocaleDateString('fr-FR'),
+      unread:!s.read,
+      type:s.type,
+      tag:'tag-'+(s.type==='sanction'?'sanction':s.type==='warn'?'warn':'info'),
+      duration:s.duration||null,
+      body:s.body,
+      durationOk:false,
+      dbId:s.id
+    }));
+  }catch(e){MOCK_SANCTIONS=[];}
+
+  // Charger signalements depuis Supabase
+  try{
+    const{data:signals}=await db.from('report_notifications')
+      .select('*').eq('player_id',u.id).order('created_at',{ascending:false});
+    MOCK_SIGNALEMENTS=(signals||[]).map(s=>({
+      id:s.id,
+      icon:s.status==='resolved'?'✅':'🔍',
+      title:s.title||'Signalement traité',
+      date:new Date(s.created_at).toLocaleDateString('fr-FR'),
+      unread:!s.read,
+      type:s.status==='resolved'?'resolved':'info',
+      tag:s.status==='resolved'?'tag-resolved':'tag-info',
+      body:s.body,
+      durationOk:true,
+      dbId:s.id
+    }));
+  }catch(e){MOCK_SIGNALEMENTS=[];}
+
+  renderSanctions();
+  renderSignalements();
+  updateUnreadCount();
+}
+
+async function markAsRead(table,dbId){
+  if(!dbId)return;
+  try{await db.from(table).update({read:true}).eq('id',dbId);}catch(e){}
+}
+
+// INIT
+loadProfile();
+</script>
+</body>
+</html>
