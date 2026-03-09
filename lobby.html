@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LYCAN — Lobby</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--night:#050810;--deep:#080d1a;--fog:#0b1228;--accent:#4a6fa5;--silver:#a8b8d0;--moon:#d4e0f0;--text:#b8ccdd;--text-dim:#5a7080;--blue-glow:#1a3a6e;--gold:#f5c842;--coin:#c0c8d0;--success:#4aff80;--error:#e05555;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:var(--night);color:var(--text);font-family:'Lato',sans-serif;font-weight:300;min-height:100vh;cursor:crosshair;}
+    .bg{position:fixed;inset:0;z-index:0;pointer-events:none;}
+    .bg-sky{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,#0a1535 0%,#050810 60%);}
+    .stars{position:absolute;inset:0;overflow:hidden;}
+    .star{position:absolute;background:white;border-radius:50%;animation:twinkle var(--d,3s) infinite ease-in-out var(--delay,0s);}
+    @keyframes twinkle{0%,100%{opacity:var(--op,.6)}50%{opacity:.1}}
+    .moon{position:absolute;top:5%;right:8%;width:55px;height:55px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#e8f0ff,#c2d4f0 50%,#8aabcf);box-shadow:0 0 25px rgba(180,210,255,.4),0 0 60px rgba(100,160,255,.2);animation:moonPulse 6s infinite ease-in-out;}
+    @keyframes moonPulse{0%,100%{box-shadow:0 0 25px rgba(180,210,255,.4)}50%{box-shadow:0 0 45px rgba(180,210,255,.6)}}
+    .fog{position:absolute;bottom:0;left:-10%;right:-10%;height:80px;background:linear-gradient(to right,transparent,rgba(15,30,70,.3) 25%,rgba(15,30,70,.3) 75%,transparent);filter:blur(20px);animation:fogDrift 14s infinite ease-in-out alternate;}
+    @keyframes fogDrift{from{transform:translateX(-4%)}to{transform:translateX(4%)}}
+
+    /* TOPBAR */
+    .topbar{position:fixed;top:0;left:0;right:0;z-index:100;background:linear-gradient(to bottom,rgba(5,8,16,.98),rgba(5,8,16,.85));backdrop-filter:blur(8px);border-bottom:1px solid rgba(74,111,165,.15);display:flex;align-items:center;justify-content:space-between;padding:.7rem 2rem;gap:1rem;}
+    .topbar-logo{font-family:'Cinzel Decorative',serif;font-size:1rem;letter-spacing:.25em;color:var(--moon);text-decoration:none;flex-shrink:0;}
+    .topbar-currencies{display:flex;align-items:center;gap:1rem;}
+    .currency{display:flex;align-items:center;gap:.4rem;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;}
+    .currency-icon{font-size:.9rem;}
+    .currency-val{color:var(--silver);}
+    .topbar-user{display:flex;align-items:center;gap:.7rem;}
+    .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--deep);border:1px solid rgba(74,111,165,.3);display:flex;align-items:center;justify-content:center;font-size:1rem;}
+    .topbar-username{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.1em;color:var(--silver);}
+    .btn-topbar{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.35rem .8rem;border:1px solid rgba(74,111,165,.25);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s;}
+    .btn-topbar:hover{border-color:rgba(74,111,165,.5);color:var(--silver);}
+    .btn-topbar.logout{border-color:rgba(224,85,85,.25);color:var(--error);}
+    .btn-topbar.logout:hover{background:rgba(224,85,85,.1);}
+    .online-indicator{display:flex;align-items:center;gap:.4rem;font-family:'Cinzel',serif;font-size:.62rem;color:var(--text-dim);}
+    .online-dot{width:6px;height:6px;border-radius:50%;background:var(--success);box-shadow:0 0 5px var(--success);animation:blink 2s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+    /* CONTENT */
+    .content{position:relative;z-index:10;padding:70px 2rem 2rem;max-width:1100px;margin:0 auto;}
+
+    /* WELCOME BANNER */
+    .welcome-banner{background:linear-gradient(135deg,rgba(26,58,110,.3),rgba(11,18,40,.8));border:1px solid rgba(74,111,165,.2);padding:1.5rem 2rem;margin-bottom:2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;animation:fadeUp .5s ease;}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .welcome-text{}
+    .welcome-greeting{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);margin-bottom:.3rem;}
+    .welcome-sub{font-size:.78rem;color:var(--text-dim);}
+    .welcome-stats{display:flex;gap:2rem;}
+    .wstat{text-align:center;}
+    .wstat-val{font-family:'Cinzel',serif;font-size:1.1rem;color:var(--moon);}
+    .wstat-label{font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);}
+
+    /* GAME CARDS */
+    .section-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.7rem;}
+    .section-label::before{content:'';display:block;width:20px;height:1px;background:var(--accent);}
+    .game-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2.5rem;}
+    .game-card{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.18);padding:1.8rem 1.5rem;cursor:pointer;transition:all .3s;position:relative;overflow:hidden;}
+    .game-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,var(--accent),transparent);opacity:0;transition:opacity .3s;}
+    .game-card:hover{border-color:rgba(74,111,165,.4);transform:translateY(-3px);box-shadow:0 8px 25px rgba(10,20,50,.6);}
+    .game-card:hover::before{opacity:1;}
+    .card-icon{font-size:2rem;margin-bottom:.8rem;}
+    .card-title{font-family:'Cinzel',serif;font-size:.88rem;letter-spacing:.12em;color:var(--moon);margin-bottom:.4rem;}
+    .card-desc{font-size:.75rem;color:var(--text-dim);line-height:1.6;}
+    .card-action{display:inline-block;margin-top:1rem;font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.15em;color:var(--accent);border-bottom:1px solid rgba(74,111,165,.3);padding-bottom:.15rem;}
+
+    /* LAYOUT */
+    .main-layout{display:grid;grid-template-columns:1fr 280px;gap:1.5rem;}
+
+    /* PARTIES EN COURS */
+    .parties-list{display:flex;flex-direction:column;gap:.7rem;}
+    .partie-row{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1rem 1.2rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;transition:all .2s;cursor:pointer;}
+    .partie-row:hover{border-color:rgba(74,111,165,.35);}
+    .partie-info{}
+    .partie-name{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.08em;color:var(--silver);margin-bottom:.2rem;}
+    .partie-meta{font-size:.7rem;color:var(--text-dim);}
+    .partie-status{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.1em;padding:.2rem .6rem;border:1px solid;}
+    .status-waiting{color:var(--success);border-color:rgba(74,255,128,.3);}
+    .status-playing{color:var(--gold);border-color:rgba(245,200,66,.3);}
+    .status-full{color:var(--error);border-color:rgba(224,85,85,.3);}
+    .btn-join{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.1em;padding:.4rem 1rem;border:1px solid rgba(74,111,165,.3);background:rgba(74,111,165,.08);color:var(--accent);cursor:pointer;transition:all .2s;flex-shrink:0;}
+    .btn-join:hover{background:rgba(74,111,165,.2);color:var(--moon);}
+    .btn-join:disabled{opacity:.4;cursor:not-allowed;}
+
+    /* SIDEBAR */
+    .sidebar{}
+    .sidebar-box{background:linear-gradient(135deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.15);padding:1.2rem;margin-bottom:1rem;}
+    .sidebar-title{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:.8rem;}
+    .online-list{display:flex;flex-direction:column;gap:.5rem;}
+    .online-player{display:flex;align-items:center;gap:.6rem;font-size:.78rem;}
+    .op-dot{width:5px;height:5px;border-radius:50%;background:var(--success);box-shadow:0 0 4px var(--success);flex-shrink:0;}
+    .op-name{color:var(--silver);}
+    .sidebar-nav{display:flex;flex-direction:column;gap:.4rem;}
+    .nav-btn{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.1em;padding:.65rem 1rem;border:1px solid rgba(74,111,165,.15);background:none;color:var(--text-dim);cursor:pointer;text-align:left;transition:all .2s;text-decoration:none;display:block;}
+    .nav-btn:hover{border-color:rgba(74,111,165,.35);color:var(--silver);background:rgba(74,111,165,.05);}
+
+    /* OVERLAY */
+    .overlay{position:fixed;inset:0;z-index:200;background:rgba(5,8,16,.85);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;}
+    .overlay.show{display:flex;}
+    .modal{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.25);padding:2.5rem;width:100%;max-width:480px;position:relative;animation:fadeUp .3s ease;}
+    .modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .modal-title{font-family:'Cinzel Decorative',serif;font-size:1.1rem;color:var(--moon);margin-bottom:1.5rem;}
+    .modal-field{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;}
+    .modal-field label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);}
+    .modal-field input,.modal-field select{background:rgba(5,8,16,.8);border:1px solid rgba(74,111,165,.25);color:var(--moon);font-family:'Lato',sans-serif;font-size:.9rem;padding:.75rem 1rem;outline:none;transition:border-color .3s;width:100%;}
+    .modal-field input:focus,.modal-field select:focus{border-color:rgba(74,111,165,.6);}
+    .modal-field select option{background:var(--deep);}
+    .modal-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+    .btn-modal-confirm{font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.18em;padding:.9rem;border:none;cursor:pointer;background:linear-gradient(135deg,var(--blue-glow),var(--accent));color:var(--moon);clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);width:100%;margin-top:.5rem;transition:all .3s;}
+    .btn-modal-confirm:hover{box-shadow:0 0 25px rgba(74,111,165,.5);}
+    .btn-modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.2rem;transition:color .2s;}
+    .btn-modal-close:hover{color:var(--error);}
+
+    /* DISCORD FIXE */
+    .discord-fixed{position:fixed;bottom:1.5rem;right:1.5rem;z-index:150;display:flex;align-items:center;gap:.6rem;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.1em;padding:.7rem 1.1rem;border:1px solid rgba(88,101,242,.4);background:rgba(10,12,30,.92);backdrop-filter:blur(8px);color:#7289da;cursor:pointer;text-decoration:none;transition:all .25s;box-shadow:0 4px 20px rgba(88,101,242,.15);}
+    .discord-fixed:hover{background:rgba(88,101,242,.25);color:#fff;border-color:rgba(88,101,242,.7);box-shadow:0 4px 25px rgba(88,101,242,.3);}
+    .discord-fixed svg{flex-shrink:0;}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:2rem;right:2rem;z-index:999;background:var(--fog);border:1px solid rgba(74,111,165,.3);padding:.9rem 1.4rem;font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);display:none;animation:fadeUp .3s ease;}
+    .toast.show{display:block;}
+    .loading{text-align:center;font-family:'Cinzel',serif;font-size:.75rem;color:var(--text-dim);padding:2rem;}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(74,111,165,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ROLES PICKER */
+    .roles-modal{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.25);padding:2rem;width:100%;max-width:700px;position:relative;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto;}
+    .roles-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .roles-tabs{display:flex;gap:0;border-bottom:1px solid rgba(74,111,165,.2);margin-bottom:1.2rem;}
+    .roles-tab{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.15em;padding:.6rem 1.2rem;border:none;background:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
+    .roles-tab.active{color:var(--moon);border-bottom-color:var(--accent);}
+    .roles-tab.wolf{color:#e05555;}.roles-tab.wolf.active{border-bottom-color:#e05555;}
+    .roles-tab.neutral{color:var(--gold);}.roles-tab.neutral.active{border-bottom-color:var(--gold);}
+    .roles-group{display:none;}.roles-group.active{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem;}
+    .role-card{background:rgba(74,111,165,.04);border:1px solid rgba(74,111,165,.15);padding:.8rem;display:flex;gap:.8rem;align-items:flex-start;transition:border-color .2s;cursor:default;}
+    .role-card:hover{border-color:rgba(74,111,165,.3);}
+    .role-card.wolf-card{border-color:rgba(224,85,85,.12);}.role-card.wolf-card:hover{border-color:rgba(224,85,85,.35);}
+    .role-card.neutral-card{border-color:rgba(245,200,66,.12);}.role-card.neutral-card:hover{border-color:rgba(245,200,66,.35);}
+    .role-card-icon{font-size:1.6rem;flex-shrink:0;line-height:1;}
+    .role-card-info{flex:1;}
+    .role-card-name{font-family:'Cinzel',serif;font-size:.72rem;color:var(--silver);margin-bottom:.25rem;}
+    .role-card-desc{font-size:.65rem;color:var(--text-dim);line-height:1.5;margin-bottom:.5rem;}
+    .role-card-counter{display:flex;align-items:center;gap:.5rem;}
+    .rc-btn{width:22px;height:22px;background:rgba(74,111,165,.12);border:1px solid rgba(74,111,165,.3);color:var(--silver);cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:background .2s;flex-shrink:0;}
+    .rc-btn:hover{background:rgba(74,111,165,.3);}
+    .rc-val{font-family:'Cinzel',serif;font-size:.75rem;color:var(--moon);min-width:18px;text-align:center;}
+    .roles-summary{background:rgba(74,111,165,.05);border:1px solid rgba(74,111,165,.12);padding:.7rem 1rem;margin-top:1rem;font-family:'Cinzel',serif;font-size:.65rem;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;}
+    .roles-summary span{color:var(--moon);}
+    .roles-summary .warn{color:var(--error);}
+
+    /* DISCORD BTN */
+    .discord-btn{display:flex;align-items:center;gap:.6rem;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.1em;padding:.65rem 1rem;border:1px solid rgba(88,101,242,.35);background:rgba(88,101,242,.08);color:#7289da;cursor:pointer;text-decoration:none;transition:all .2s;width:100%;}
+    .discord-btn:hover{background:rgba(88,101,242,.2);color:#fff;border-color:rgba(88,101,242,.6);}
+
+    /* COMPOSITIONS */
+    .compo-modal{background:linear-gradient(160deg,var(--deep),var(--fog));border:1px solid rgba(74,111,165,.25);padding:2rem;width:100%;max-width:600px;position:relative;animation:fadeUp .3s ease;max-height:90vh;overflow-y:auto;}
+    .compo-modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--accent),transparent);}
+    .role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:1rem 0;}
+    .role-chip{background:rgba(74,111,165,.08);border:1px solid rgba(74,111,165,.2);padding:.6rem .8rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem;}
+    .role-chip-name{font-family:'Cinzel',serif;font-size:.65rem;color:var(--silver);}
+    .role-chip-count{display:flex;align-items:center;gap:.4rem;}
+    .role-chip-count button{width:20px;height:20px;background:rgba(74,111,165,.15);border:1px solid rgba(74,111,165,.3);color:var(--silver);cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:background .2s;}
+    .role-chip-count button:hover{background:rgba(74,111,165,.35);}
+    .role-chip-count span{font-family:'Cinzel',serif;font-size:.72rem;color:var(--moon);min-width:16px;text-align:center;}
+    .compo-summary{font-family:'Cinzel',serif;font-size:.68rem;color:var(--text-dim);margin-top:.8rem;padding:.6rem;background:rgba(74,111,165,.05);border:1px solid rgba(74,111,165,.1);}
+    .compo-summary span{color:var(--moon);}
+    .lobby-compo-btn{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.08em;padding:.25rem .6rem;border:1px solid rgba(74,111,165,.3);background:none;color:var(--accent);cursor:pointer;transition:all .2s;margin-left:.5rem;}
+    .lobby-compo-btn:hover{background:rgba(74,111,165,.15);}
+    @media(max-width:800px){.main-layout{grid-template-columns:1fr;}.game-cards{grid-template-columns:1fr 1fr;}.welcome-stats{gap:1rem;}.role-grid{grid-template-columns:repeat(2,1fr);}}
+  </style>
+</head>
+<body>
+<div class="bg">
+  <div class="bg-sky"></div>
+  <div class="stars" id="stars"></div>
+  <div class="moon"></div>
+  <div class="fog"></div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <a href="index.html" class="topbar-logo">LYCAN</a>
+  <div class="topbar-currencies">
+    <div class="currency"><span class="currency-icon">🪙</span><span class="currency-val" id="coinsVal">—</span></div>
+    <div class="currency"><span class="currency-icon">⚔️</span><span class="currency-val" id="goldVal">—</span></div>
+  </div>
+  <div class="topbar-user">
+    <div class="online-indicator"><div class="online-dot"></div><span id="onlineCount">—</span> en ligne</div>
+    <div class="topbar-avatar" id="topAvatar">🐺</div>
+    <div class="topbar-username" id="topUsername">...</div>
+    <a href="profil.html" class="btn-topbar">Profil</a>
+    <button class="btn-topbar logout" onclick="logout()">Quitter</button>
+  </div>
+</div>
+
+<!-- MODAL CRÉER -->
+<div class="overlay" id="createOverlay">
+  <div class="modal">
+    <button class="btn-modal-close" onclick="closeOverlay('createOverlay')">✕</button>
+    <div class="modal-title">Créer une partie</div>
+    <div class="modal-field"><label>Nom de la partie</label><input type="text" id="gameName" placeholder="La Nuit du Village" maxlength="40"/></div>
+    <div class="modal-row">
+      <div class="modal-field"><label>Joueurs min.</label>
+        <select id="gameMin"><option value="6">6</option><option value="8">8</option><option value="10">10</option></select>
+      </div>
+      <div class="modal-field"><label>Joueurs max.</label>
+        <select id="gameMax"><option value="8">8</option><option value="10">10</option><option value="12" selected>12</option><option value="15">15</option><option value="18">18</option></select>
+      </div>
+    </div>
+    <div class="modal-field"><label>Mode</label>
+      <select id="gameMode"><option>Standard</option><option>Avancé</option><option>Expert</option></select>
+    </div>
+    <div class="modal-field"><label>Visibilité</label>
+      <select id="gameVis"><option value="public">🌍 Publique</option><option value="private">🔐 Privée</option></select>
+    </div>
+    <div style="margin-bottom:1rem">
+      <button type="button" style="font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.12em;padding:.65rem 1rem;border:1px solid rgba(74,111,165,.3);background:rgba(74,111,165,.06);color:var(--accent);cursor:pointer;width:100%;transition:all .2s" onclick="openRolesPicker()" onmouseover="this.style.background='rgba(74,111,165,.15)'" onmouseout="this.style.background='rgba(74,111,165,.06)'">🃏 Configurer les rôles <span id="rolesPickerSummary" style="color:var(--text-dim)">(auto)</span></button>
+    </div>
+    <button class="btn-modal-confirm" onclick="createGame()">🐺 Créer la partie</button>
+  </div>
+</div>
+
+<!-- MODAL RÔLES -->
+<div class="overlay" id="rolesOverlay">
+  <div class="roles-modal">
+    <button class="btn-modal-close" onclick="closeOverlay('rolesOverlay')">✕</button>
+    <div class="modal-title" style="margin-bottom:.5rem">🃏 Composition des rôles</div>
+    <div style="font-family:'Cinzel',serif;font-size:.62rem;color:var(--text-dim);margin-bottom:1.2rem">Choisis les rôles inclus dans la partie. Laisse tout à 0 pour une composition automatique.</div>
+    <div class="roles-tabs">
+      <button class="roles-tab active" onclick="switchRolesTab('village',this)">🏘️ Village</button>
+      <button class="roles-tab wolf" onclick="switchRolesTab('loups',this)">🐺 Loups</button>
+      <button class="roles-tab neutral" onclick="switchRolesTab('neutres',this)">⚖️ Neutres</button>
+    </div>
+    <div class="roles-group active" id="rg-village"></div>
+    <div class="roles-group" id="rg-loups"></div>
+    <div class="roles-group" id="rg-neutres"></div>
+    <div class="roles-summary" id="rolesSummaryBar">
+      <div>Total : <span id="rsTotalRoles">0</span> rôles · Loups : <span id="rsWolves">0</span> · Village : <span id="rsVillage">0</span> · Neutres : <span id="rsNeutral">0</span></div>
+      <div id="rsWarn"></div>
+    </div>
+    <div style="display:flex;gap:.8rem;margin-top:1rem">
+      <button class="btn-modal-confirm" onclick="confirmRolesPicker()" style="flex:1">✓ Confirmer</button>
+      <button onclick="resetRoles()" style="font-family:'Cinzel',serif;font-size:.65rem;padding:.9rem 1rem;border:1px solid rgba(74,111,165,.25);background:none;color:var(--text-dim);cursor:pointer;transition:all .2s" onmouseover="this.style.color='var(--silver)'" onmouseout="this.style.color='var(--text-dim)'">Réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REJOINDRE PRIVÉ -->
+<div class="overlay" id="privateOverlay">
+  <div class="modal">
+    <button class="btn-modal-close" onclick="closeOverlay('privateOverlay')">✕</button>
+    <div class="modal-title">Rejoindre une partie privée</div>
+    <div class="modal-field"><label>Code de la partie</label><input type="text" id="privateCode" placeholder="LYCAN-XXXX" maxlength="12"/></div>
+    <button class="btn-modal-confirm" onclick="joinPrivate()">Rejoindre</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+  <div class="welcome-banner">
+    <div class="welcome-text">
+      <div class="welcome-greeting" id="welcomeGreeting">Bonsoir, Joueur...</div>
+      <div class="welcome-sub">Le village t'attend. La nuit sera longue.</div>
+    </div>
+    <div class="welcome-stats">
+      <div class="wstat"><div class="wstat-val" id="myWins">0</div><div class="wstat-label">Victoires</div></div>
+      <div class="wstat"><div class="wstat-val" id="myGames">0</div><div class="wstat-label">Parties</div></div>
+      <div class="wstat"><div class="wstat-val" id="myRate">—</div><div class="wstat-label">% Victoire</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Que veux-tu faire ?</div>
+  <div class="game-cards">
+    <div class="game-card" onclick="document.getElementById('createOverlay').classList.add('show')">
+      <div class="card-icon">🏗️</div>
+      <div class="card-title">Créer une partie</div>
+      <div class="card-desc">Configure ta propre partie et invite des joueurs à te rejoindre.</div>
+      <div class="card-action">Créer →</div>
+    </div>
+    <div class="game-card" onclick="joinQuick()">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Partie rapide</div>
+      <div class="card-desc">Rejoins automatiquement la première partie publique disponible.</div>
+      <div class="card-action">Rejoindre →</div>
+    </div>
+    <div class="game-card" onclick="document.getElementById('privateOverlay').classList.add('show')">
+      <div class="card-icon">🔐</div>
+      <div class="card-title">Partie privée</div>
+      <div class="card-desc">Rejoins une partie avec un code secret partagé par tes amis.</div>
+      <div class="card-action">Entrer le code →</div>
+    </div>
+  </div>
+
+  <div class="main-layout">
+    <div>
+      <div class="section-label">Parties en cours</div>
+      <div id="partiesList"><div class="loading"><span class="spinner"></span>Chargement des parties...</div></div>
+    </div>
+    <div class="sidebar">
+      <div class="sidebar-box">
+        <div class="sidebar-title">Joueurs en ligne</div>
+        <div class="online-list" id="onlineList"><div class="loading"><span class="spinner"></span></div></div>
+      </div>
+      <div class="sidebar-box">
+        <div class="sidebar-title">Navigation</div>
+        <div class="sidebar-nav">
+          <a href="profil.html" class="nav-btn">👤 Mon profil</a>
+          <a href="profil.html#friends" class="nav-btn">👥 Mes amis</a>
+          <a href="profil.html#leaderboard" class="nav-btn">🏆 Classement</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DISCORD FIXE -->
+<a href="https://discord.gg/rs2VbrYQyA" target="_blank" class="discord-fixed">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+  Discord
+</a>
+
+<div class="toast" id="toast"></div>
+
+<!-- MODAL COMPOSITIONS -->
+<div class="overlay" id="compoOverlay">
+  <div class="compo-modal">
+    <button class="btn-modal-close" onclick="closeOverlay('compoOverlay')">✕</button>
+    <div class="modal-title">🃏 Compositions — <span id="compoLobbyName">Partie</span></div>
+    <div style="font-family:'Cinzel',serif;font-size:.65rem;color:var(--text-dim);margin-bottom:1rem">Définis les rôles attribués dans cette partie. Sauvegarde pour que tous les joueurs voient la composition en temps réel.</div>
+    <div class="role-grid" id="roleGrid"></div>
+    <div class="compo-summary" id="compoSummary"></div>
+    <div style="margin-top:1.2rem;display:flex;gap:.8rem">
+      <button class="btn-modal-confirm" onclick="saveCompo()" style="flex:1">💾 Sauvegarder</button>
+      <button class="btn-modal-confirm" onclick="closeOverlay('compoOverlay')" style="flex:0 0 auto;background:rgba(74,111,165,.15);clip-path:none;padding:.9rem 1.2rem">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SURL='https://sicyjahkxijkxrxtmjhl.supabase.co';
+  const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNpY3lqYWhreGlqa3hyeHRtamhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMTczNjksImV4cCI6MjA4ODU5MzM2OX0.LnOf0QkBzdWZUh-IpVC9XNv7SP_SWpIwX-DTzT7y0q4';
+  const db=supabase.createClient(SURL,SKEY);
+
+  // Stars
+  const sc=document.getElementById('stars');
+  for(let i=0;i<100;i++){const s=document.createElement('div');s.className='star';const sz=Math.random()*2+.5;s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*75}%;left:${Math.random()*100}%;--op:${Math.random()*.5+.2};--d:${Math.random()*4+2}s;--delay:${Math.random()*4}s`;sc.appendChild(s);}
+
+  // Auth check
+  const user=JSON.parse(localStorage.getItem('lycan_user')||'null');
+  if(!user) window.location.href='login.html';
+
+  window.addEventListener('load',async()=>{
+    // Greet
+    const h=new Date().getHours();
+    const greet=h<6?'Bonne nuit':h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+    document.getElementById('welcomeGreeting').textContent=greet+', '+user.username+'...';
+    document.getElementById('topUsername').textContent=user.username;
+    document.getElementById('topAvatar').textContent=user.avatar||'🐺';
+
+    // Load fresh user data
+    const{data:fresh}=await db.from('players').select('*').eq('id',user.id).single();
+    if(fresh){
+      localStorage.setItem('lycan_user',JSON.stringify(fresh));
+      document.getElementById('coinsVal').textContent=fresh.coins;
+      document.getElementById('goldVal').textContent=fresh.gold;
+      document.getElementById('myWins').textContent=fresh.wins;
+      document.getElementById('myGames').textContent=fresh.games;
+      document.getElementById('myRate').textContent=fresh.games>0?Math.round(fresh.wins/fresh.games*100)+'%':'—';
+    }
+
+    loadLobbies();
+    loadOnlinePlayers();
+
+    // Realtime lobbies
+    db.channel('lobbies-channel')
+      .on('postgres_changes',{event:'*',schema:'public',table:'lobbies'},()=>loadLobbies())
+      .on('postgres_changes',{event:'*',schema:'public',table:'lobby_players'},()=>loadLobbies())
+      .subscribe();
+
+    // Realtime online players
+    db.channel('online-channel')
+      .on('postgres_changes',{event:'*',schema:'public',table:'players'},()=>loadOnlinePlayers())
+      .subscribe();
+  });
+
+  async function loadLobbies(){
+    const{data:lobbies}=await db.from('lobbies').select(`*, lobby_players(count)`).eq('status','waiting').order('created_at',{ascending:false}).limit(10);
+    const el=document.getElementById('partiesList');
+    if(!lobbies||lobbies.length===0){
+      el.innerHTML='<div class="loading">Aucune partie en attente — crée la première !</div>';
+      return;
+    }
+    el.innerHTML=lobbies.map(l=>{
+      const count=l.lobby_players?.[0]?.count||0;
+      const full=count>=l.max_players;
+      const statusClass=full?'status-full':'status-waiting';
+      const statusText=full?'Pleine':`${count}/${l.max_players} joueurs`;
+      return `<div class="partie-row" onclick="${full?'':'joinLobby(\''+l.id+'\',\''+l.name+'\')'}">
+        <div class="partie-info">
+          <div class="partie-name">${l.name}</div>
+          <div class="partie-meta">Hôte : ${l.host} · Mode : ${l.mode} · ${l.visibility==='public'?'🌍 Publique':'🔐 Privée'}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.8rem">
+          <span class="partie-status ${statusClass}">${statusText}</span>
+          <button class="lobby-compo-btn" onclick="event.stopPropagation();openCompo('${l.id}','${l.name.replace(/'/g,"\\'")}')">🃏 Compo</button>
+          <button class="btn-join" ${full?'disabled':''} onclick="event.stopPropagation();joinLobby('${l.id}','${l.name}')">Rejoindre</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadOnlinePlayers(){
+    const fiveMinAgo=new Date(Date.now()-5*60*1000).toISOString();
+    const{data}=await db.from('players').select('username,avatar').gte('last_seen',fiveMinAgo).limit(10);
+    const el=document.getElementById('onlineList');
+    const count=data?.length||0;
+    document.getElementById('onlineCount').textContent=count;
+    if(!data||count===0){el.innerHTML='<div style="font-size:.72rem;color:var(--text-dim);font-family:\'Cinzel\',serif">Aucun joueur en ligne</div>';return;}
+    el.innerHTML=data.map(p=>`<div class="online-player"><div class="op-dot"></div><div class="op-name">${p.username}</div></div>`).join('');
+  }
+
+  // ---- ROLES PICKER ----
+  const ROLES_DEF={
+    village:[
+      {id:'villageois',emoji:'🏘️',name:'Villageois',desc:'Aucun pouvoir. Votez pour éliminer les loups le jour.'},
+      {id:'voyante',emoji:'🔮',name:'Voyante',desc:'Chaque nuit, découvre l\'identité d\'un joueur.'},
+      {id:'sorciere',emoji:'🧪',name:'Sorcière',desc:'Possède une potion de vie et une de mort, à usage unique.'},
+      {id:'chasseur',emoji:'🏹',name:'Chasseur',desc:'À sa mort, emporte un joueur de son choix.'},
+      {id:'cupidon',emoji:'💘',name:'Cupidon',desc:'La 1ère nuit, lie deux amoureux. S\'ils meurent, ils meurent ensemble.'},
+      {id:'salvateur',emoji:'🛡',name:'Salvateur',desc:'Chaque nuit, protège un joueur de l\'attaque des loups.'},
+      {id:'idiot',emoji:'🤡',name:'Idiot du Village',desc:'Si le village vote contre lui, il survit et perd son droit de vote.'},
+      {id:'ancien',emoji:'👴',name:'Ancien',desc:'Survit à la première attaque des loups.'},
+      {id:'corbeau',emoji:'🪶',name:'Corbeau',desc:'Ajoute 2 votes supplémentaires contre un joueur le lendemain.'},
+      {id:'petite_fille',emoji:'👧',name:'Petite Fille',desc:'Peut espionner les loups la nuit, mais risque d\'être éliminée si elle est vue.'},
+    ],
+    loups:[
+      {id:'loup',emoji:'🐺',name:'Loup-Garou',desc:'Élimine un villageois chaque nuit avec ses alliés.'},
+      {id:'grand_loup',emoji:'🐺',name:'Grand Méchant Loup',desc:'En plus de l\'attaque de nuit, peut dévorer un 2ème joueur si aucun loup n\'a été éliminé.'},
+      {id:'loup_blanc',emoji:'🤍',name:'Loup Blanc',desc:'Joue solo. Peut tuer un autre loup une nuit sur deux pour rester le dernier loup.'},
+    ],
+    neutres:[
+      {id:'joueur_flute',emoji:'🎵',name:'Joueur de Flûte',desc:'Chaque nuit, ensorcèle 2 joueurs. Gagne si tous les survivants sont ensorcelés.'},
+      {id:'ange',emoji:'😇',name:'Ange',desc:'Gagne uniquement s\'il est éliminé par le village lors du premier vote.'},
+    ],
+  };
+
+  let selectedRoles={};
+
+  function initRolesPicker(){
+    for(const[group,roles] of Object.entries(ROLES_DEF)){
+      const container=document.getElementById('rg-'+group);
+      container.innerHTML=roles.map(r=>`
+        <div class="role-card${group==='loups'?' wolf-card':group==='neutres'?' neutral-card':''}">
+          <div class="role-card-icon">${r.emoji}</div>
+          <div class="role-card-info">
+            <div class="role-card-name">${r.name}</div>
+            <div class="role-card-desc">${r.desc}</div>
+            <div class="role-card-counter">
+              <button class="rc-btn" onclick="changeRoleCount('${r.id}',-1)">−</button>
+              <span class="rc-val" id="rcount-${r.id}">0</span>
+              <button class="rc-btn" onclick="changeRoleCount('${r.id}',1)">+</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+    updateRolesSummary();
+  }
+
+  function openRolesPicker(){
+    initRolesPicker();
+    // Restaurer les valeurs existantes
+    for(const[id,count] of Object.entries(selectedRoles)){
+      const el=document.getElementById('rcount-'+id);
+      if(el) el.textContent=count;
+    }
+    updateRolesSummary();
+    document.getElementById('rolesOverlay').classList.add('show');
+  }
+
+  function switchRolesTab(group,btn){
+    document.querySelectorAll('.roles-group').forEach(g=>g.classList.remove('active'));
+    document.getElementById('rg-'+group).classList.add('active');
+    document.querySelectorAll('.roles-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  function changeRoleCount(id,delta){
+    selectedRoles[id]=(selectedRoles[id]||0)+delta;
+    if(selectedRoles[id]<0) selectedRoles[id]=0;
+    if(selectedRoles[id]===0) delete selectedRoles[id];
+    const el=document.getElementById('rcount-'+id);
+    if(el) el.textContent=selectedRoles[id]||0;
+    updateRolesSummary();
+  }
+
+  function updateRolesSummary(){
+    let total=0,wolves=0,village=0,neutral=0;
+    for(const[id,count] of Object.entries(selectedRoles)){
+      total+=count;
+      const isWolf=ROLES_DEF.loups.find(r=>r.id===id);
+      const isNeutral=ROLES_DEF.neutres.find(r=>r.id===id);
+      if(isWolf) wolves+=count;
+      else if(isNeutral) neutral+=count;
+      else village+=count;
+    }
+    document.getElementById('rsTotalRoles').textContent=total;
+    document.getElementById('rsWolves').textContent=wolves;
+    document.getElementById('rsVillage').textContent=village;
+    document.getElementById('rsNeutral').textContent=neutral;
+    const warn=document.getElementById('rsWarn');
+    if(total>0&&wolves===0) warn.innerHTML='<span class="warn">⚠ Aucun loup !</span>';
+    else if(total>0&&wolves>=village) warn.innerHTML='<span class="warn">⚠ Trop de loups !</span>';
+    else warn.innerHTML='';
+  }
+
+  function resetRoles(){
+    selectedRoles={};
+    document.querySelectorAll('.rc-val').forEach(el=>el.textContent='0');
+    updateRolesSummary();
+  }
+
+  function confirmRolesPicker(){
+    const total=Object.values(selectedRoles).reduce((a,b)=>a+b,0);
+    const summary=total>0?`(${total} rôles définis)`:'(auto)';
+    document.getElementById('rolesPickerSummary').textContent=summary;
+    closeOverlay('rolesOverlay');
+  }
+
+  async function createGame(){
+    const name=document.getElementById('gameName').value.trim()||'La Nuit du Village';
+    const min=parseInt(document.getElementById('gameMin').value);
+    const max=parseInt(document.getElementById('gameMax').value);
+    const mode=document.getElementById('gameMode').value;
+    const vis=document.getElementById('gameVis').value;
+    const code='LYCAN-'+Math.floor(1000+Math.random()*9000);
+    const composition=Object.keys(selectedRoles).length>0?selectedRoles:{};
+
+    const{data,error}=await db.from('lobbies').insert({name,host:user.username,min_players:min,max_players:max,visibility:vis,mode,code,status:'waiting',composition}).select().single();
+    if(error){showToast('❌ Erreur création : '+error.message);return;}
+
+    // Add host to lobby_players
+    await db.from('lobby_players').insert({lobby_id:data.id,username:user.username,ready:false});
+    closeOverlay('createOverlay');
+
+    const url=`game-room.html?lobbyId=${data.id}&name=${encodeURIComponent(name)}&host=${encodeURIComponent(user.username)}&min=${min}&max=${max}&vis=${vis}&mode=${encodeURIComponent(mode)}&code=${code}`;
+    window.location.href=url;
+  }
+
+  async function joinLobby(id,name){
+    // Check if already in lobby
+    const{data:existing}=await db.from('lobby_players').select('id').eq('lobby_id',id).eq('username',user.username).maybeSingle();
+    if(!existing){
+      const{error}=await db.from('lobby_players').insert({lobby_id:id,username:user.username,ready:false});
+      if(error&&error.code!=='23505'){showToast('❌ Impossible de rejoindre');return;}
+    }
+    const{data:lobby}=await db.from('lobbies').select('*').eq('id',id).single();
+    const url=`game-room.html?lobbyId=${id}&name=${encodeURIComponent(lobby.name)}&host=${encodeURIComponent(lobby.host)}&min=${lobby.min_players}&max=${lobby.max_players}&vis=${lobby.visibility}&mode=${encodeURIComponent(lobby.mode)}&code=${lobby.code}`;
+    window.location.href=url;
+  }
+
+  async function joinQuick(){
+    const{data:lobbies}=await db.from('lobbies').select('*, lobby_players(count)').eq('status','waiting').eq('visibility','public');
+    const available=lobbies?.find(l=>(l.lobby_players?.[0]?.count||0)<l.max_players);
+    if(!available){showToast('Aucune partie disponible. Crée la tienne !');return;}
+    joinLobby(available.id,available.name);
+  }
+
+  async function joinPrivate(){
+    const code=document.getElementById('privateCode').value.trim().toUpperCase();
+    if(!code){showToast('Entre un code.');return;}
+    const{data}=await db.from('lobbies').select('*').eq('code',code).eq('status','waiting').maybeSingle();
+    if(!data){showToast('❌ Code introuvable ou partie terminée.');return;}
+    closeOverlay('privateOverlay');
+    joinLobby(data.id,data.name);
+  }
+
+  function closeOverlay(id){document.getElementById(id).classList.remove('show');}
+
+  async function logout(){
+    await db.from('players').update({last_seen:new Date(0).toISOString()}).eq('id',user.id);
+    localStorage.removeItem('lycan_user');
+    window.location.href='login.html';
+  }
+
+  // ---- COMPOSITIONS ----
+  const ROLES_DISPO=[
+    {id:'loup',name:'Loup-Garou',icon:'🐺'},
+    {id:'villageois',name:'Villageois',icon:'👨'},
+    {id:'voyante',name:'Voyante',icon:'🔮'},
+    {id:'sorciere',name:'Sorcière',icon:'🧪'},
+    {id:'chasseur',name:'Chasseur',icon:'🏹'},
+    {id:'cupidon',name:'Cupidon',icon:'💘'},
+    {id:'salvateur',name:'Salvateur',icon:'🛡'},
+    {id:'voleur',name:'Voleur',icon:'🗡'},
+    {id:'idiot',name:'Idiot du Village',icon:'🤡'},
+    {id:'corbeau',name:'Corbeau',icon:'🪶'},
+    {id:'ancien',name:'Ancien',icon:'👴'},
+    {id:'ange',name:'Ange',icon:'😇'},
+  ];
+  let currentCompoLobbyId=null;
+  let compoRoles={};
+
+  async function openCompo(lobbyId,lobbyName){
+    currentCompoLobbyId=lobbyId;
+    document.getElementById('compoLobbyName').textContent=lobbyName;
+    // Load existing compo from Supabase
+    const{data}=await db.from('lobbies').select('composition').eq('id',lobbyId).single();
+    compoRoles=data?.composition||{};
+    renderRoleGrid();
+    document.getElementById('compoOverlay').classList.add('show');
+  }
+
+  function renderRoleGrid(){
+    const grid=document.getElementById('roleGrid');
+    grid.innerHTML=ROLES_DISPO.map(r=>{
+      const count=compoRoles[r.id]||0;
+      return `<div class="role-chip">
+        <div class="role-chip-name">${r.icon} ${r.name}</div>
+        <div class="role-chip-count">
+          <button onclick="changeRole('${r.id}',-1)">−</button>
+          <span id="rc-${r.id}">${count}</span>
+          <button onclick="changeRole('${r.id}',1)">+</button>
+        </div>
+      </div>`;
+    }).join('');
+    updateCompoSummary();
+  }
+
+  function changeRole(id,delta){
+    compoRoles[id]=(compoRoles[id]||0)+delta;
+    if(compoRoles[id]<0)compoRoles[id]=0;
+    const el=document.getElementById('rc-'+id);
+    if(el)el.textContent=compoRoles[id];
+    updateCompoSummary();
+  }
+
+  function updateCompoSummary(){
+    const total=Object.values(compoRoles).reduce((a,b)=>a+b,0);
+    const details=ROLES_DISPO.filter(r=>compoRoles[r.id]>0).map(r=>`${r.icon} ${compoRoles[r.id]}x ${r.name}`).join(' · ');
+    document.getElementById('compoSummary').innerHTML=`Total : <span>${total} rôles</span>${details?` — ${details}`:''}`;
+  }
+
+  async function saveCompo(){
+    if(!currentCompoLobbyId)return;
+    const{error}=await db.from('lobbies').update({composition:compoRoles}).eq('id',currentCompoLobbyId);
+    if(error){showToast('❌ Erreur : '+error.message);return;}
+    showToast('✅ Composition sauvegardée !');
+  }
+
+  function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>
