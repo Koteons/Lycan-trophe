@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LYCAN — Le jeu en ligne</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600&family=Lato:wght@300;400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --night: #050810;
+      --deep: #080d1a;
+      --fog: #0b1228;
+      --mist: #111d35;
+      --blue-dark: #0d1b3e;
+      --blue-mid: #132044;
+      --blue-glow: #1a3a6e;
+      --accent: #4a6fa5;
+      --silver: #a8b8d0;
+      --moon: #d4e0f0;
+      --fire: #c0692a;
+      --fire2: #e07b30;
+      --fire3: #f5a623;
+      --text: #b8ccdd;
+      --text-dim: #5a7080;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--night);
+      color: var(--text);
+      font-family: 'Lato', sans-serif;
+      font-weight: 300;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* ---- NAV ---- */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.2rem 4rem;
+      background: linear-gradient(to bottom, rgba(5,8,16,0.95), transparent);
+      backdrop-filter: blur(4px);
+    }
+
+    .nav-logo {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1.4rem;
+      letter-spacing: 0.25em;
+      color: var(--moon);
+      text-shadow: 0 0 20px rgba(100,160,255,0.5);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--silver);
+      text-decoration: none;
+      transition: color 0.3s, text-shadow 0.3s;
+    }
+
+    .nav-links a:hover {
+      color: var(--moon);
+      text-shadow: 0 0 12px rgba(180,210,255,0.6);
+    }
+
+    /* ---- HERO ---- */
+    #hero {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Sky gradient */
+    .hero-sky {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, #0a1535 0%, #050810 60%);
+    }
+
+    /* Stars */
+    .stars {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--d, 3s) infinite ease-in-out var(--delay, 0s);
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: var(--op, 0.6); transform: scale(1); }
+      50% { opacity: 0.1; transform: scale(0.5); }
+    }
+
+    /* Moon */
+    .moon {
+      position: absolute;
+      top: 8%;
+      right: 18%;
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #e8f0ff, #c2d4f0 50%, #8aabcf);
+      box-shadow:
+        0 0 30px rgba(180,210,255,0.4),
+        0 0 80px rgba(100,160,255,0.2),
+        0 0 160px rgba(60,100,200,0.1);
+      animation: moonPulse 6s infinite ease-in-out;
+    }
+
+    @keyframes moonPulse {
+      0%, 100% { box-shadow: 0 0 30px rgba(180,210,255,0.4), 0 0 80px rgba(100,160,255,0.2); }
+      50% { box-shadow: 0 0 50px rgba(180,210,255,0.6), 0 0 120px rgba(100,160,255,0.35); }
+    }
+
+    /* Forest scene */
+    .forest-scene {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 55%;
+    }
+
+    /* Fog layer */
+    .fog-layer {
+      position: absolute;
+      bottom: 30%;
+      left: -10%;
+      right: -10%;
+      height: 80px;
+      background: linear-gradient(to right,
+        transparent, rgba(20,40,80,0.3) 20%,
+        rgba(30,50,90,0.4) 50%,
+        rgba(20,40,80,0.3) 80%, transparent);
+      filter: blur(20px);
+      animation: fogDrift 12s infinite ease-in-out alternate;
+    }
+
+    .fog-layer-2 {
+      bottom: 22%;
+      height: 60px;
+      animation-delay: -4s;
+      animation-duration: 16s;
+      opacity: 0.6;
+    }
+
+    @keyframes fogDrift {
+      from { transform: translateX(-5%); }
+      to { transform: translateX(5%); }
+    }
+
+    /* Trees SVG inline */
+    .trees {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+    }
+
+    /* Village */
+    .village {
+      position: absolute;
+      bottom: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 18px;
+      align-items: flex-end;
+    }
+
+    .house {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      opacity: 0.75;
+      filter: drop-shadow(0 0 6px rgba(30,60,120,0.5));
+    }
+
+    .house-roof {
+      width: 0;
+      height: 0;
+      border-left: solid transparent;
+      border-right: solid transparent;
+      border-bottom: solid var(--mist);
+    }
+
+    .house-body {
+      background: var(--fog);
+      border: 1px solid rgba(80,110,160,0.2);
+      position: relative;
+    }
+
+    .house-window {
+      position: absolute;
+      background: rgba(200,150,60,0.25);
+      border: 1px solid rgba(200,150,60,0.4);
+      box-shadow: 0 0 8px rgba(200,150,60,0.3);
+      animation: windowFlicker var(--wf, 4s) infinite ease-in-out;
+    }
+
+    @keyframes windowFlicker {
+      0%, 100% { opacity: 0.7; }
+      45% { opacity: 1; }
+      50% { opacity: 0.3; }
+      55% { opacity: 1; }
+    }
+
+    /* Campfire */
+    .campfire {
+      position: absolute;
+      bottom: 17%;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .fire-base {
+      width: 24px;
+      height: 6px;
+      background: #3a2a10;
+      border-radius: 50%;
+      margin: 0 auto;
+    }
+
+    .flame {
+      position: absolute;
+      bottom: 4px;
+      border-radius: 50% 50% 20% 20%;
+      animation: flicker var(--fd, 0.6s) infinite ease-in-out alternate;
+      transform-origin: bottom center;
+    }
+
+    @keyframes flicker {
+      from { transform: scaleX(1) scaleY(1) rotate(-2deg); }
+      to { transform: scaleX(0.85) scaleY(1.15) rotate(2deg); }
+    }
+
+    .fire-glow {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 30px;
+      background: radial-gradient(ellipse, rgba(200,100,30,0.4) 0%, transparent 70%);
+      filter: blur(8px);
+      animation: glowPulse 1s infinite ease-in-out alternate;
+    }
+
+    @keyframes glowPulse {
+      from { opacity: 0.6; transform: translateX(-50%) scaleX(1); }
+      to { opacity: 1; transform: translateX(-50%) scaleX(1.2); }
+    }
+
+    /* Hero text */
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      margin-bottom: 28%;
+      animation: heroReveal 2s ease forwards;
+    }
+
+    @keyframes heroReveal {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo-svg {
+      margin: 0 auto 1.5rem;
+      display: block;
+      filter: drop-shadow(0 0 20px rgba(100,160,255,0.4));
+      animation: logoFloat 5s infinite ease-in-out;
+    }
+
+    @keyframes logoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    h1 {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(3.5rem, 9vw, 8rem);
+      font-weight: 900;
+      letter-spacing: 0.3em;
+      color: var(--moon);
+      text-shadow:
+        0 0 20px rgba(180,210,255,0.5),
+        0 0 60px rgba(100,160,255,0.25),
+        0 0 120px rgba(60,100,200,0.15);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-tagline {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(0.7rem, 1.5vw, 0.95rem);
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 2rem;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 1.2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 0.85rem 2.2rem;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s;
+      display: inline-block;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue-glow), var(--accent));
+      color: var(--moon);
+      clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+      box-shadow: 0 0 20px rgba(74,111,165,0.4);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, var(--accent), #6a9fc5);
+      box-shadow: 0 0 35px rgba(74,111,165,0.7);
+      transform: translateY(-2px);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--silver);
+      border: 1px solid rgba(168,184,208,0.4);
+      clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    }
+
+    .btn-outline:hover {
+      border-color: var(--silver);
+      color: var(--moon);
+      background: rgba(168,184,208,0.08);
+      transform: translateY(-2px);
+    }
+
+    /* scroll indicator */
+    .scroll-hint {
+      position: absolute;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      opacity: 0.4;
+      z-index: 10;
+      animation: bounceDown 2s infinite;
+    }
+
+    .scroll-hint span {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+    }
+
+    @keyframes bounceDown {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ---- SECTIONS ---- */
+    section {
+      padding: 7rem 4rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.4em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .section-label::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    .section-title {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      color: var(--moon);
+      margin-bottom: 1.5rem;
+      text-shadow: 0 0 30px rgba(100,160,255,0.2);
+    }
+
+    /* ---- ABOUT ---- */
+    #about {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+      border-top: 1px solid rgba(74,111,165,0.15);
+    }
+
+    .about-text p {
+      font-size: 1rem;
+      line-height: 1.9;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .about-text p strong {
+      color: var(--silver);
+      font-weight: 400;
+    }
+
+    .about-visual {
+      position: relative;
+      height: 380px;
+    }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      height: 100%;
+    }
+
+    .role-card {
+      background: linear-gradient(135deg, var(--deep), var(--fog));
+      border: 1px solid rgba(74,111,165,0.2);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .role-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(to right, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .role-card:hover {
+      border-color: rgba(74,111,165,0.5);
+      box-shadow: 0 0 20px rgba(74,111,165,0.15);
+    }
+
+    .role-card:hover::before { opacity: 1; }
+
+    .role-icon { font-size: 1.8rem; }
+
+    .role-name {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      color: var(--moon);
+    }
+
+    .role-desc {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+    }
+
+    /* ---- FEATURES ---- */
+    #features {
+      border-top: 1px solid rgba(74,111,165,0.15);
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+
+    .feature-card {
+      background: linear-gradient(160deg, var(--deep) 0%, var(--fog) 100%);
+      border: 1px solid rgba(74,111,165,0.18);
+      padding: 2rem;
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(10,20,50,0.5), 0 0 20px rgba(74,111,165,0.15);
+    }
+
+    .feature-num {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 2.5rem;
+      color: rgba(74,111,165,0.2);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .feature-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      color: var(--silver);
+      margin-bottom: 0.8rem;
+    }
+
+    .feature-text {
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: var(--text-dim);
+    }
+
+    /* ---- LEADERBOARD ---- */
+    #leaderboard {
+      border-top: 1px solid rgba(74,111,165,0.15);
+    }
+
+    .leaderboard-table {
+      margin-top: 2.5rem;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .leaderboard-table thead tr {
+      border-bottom: 1px solid rgba(74,111,165,0.3);
+    }
+
+    .leaderboard-table th {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      padding: 0.8rem 1rem;
+      text-align: left;
+    }
+
+    .leaderboard-table td {
+      padding: 1rem 1rem;
+      font-size: 0.9rem;
+      color: var(--text);
+      border-bottom: 1px solid rgba(74,111,165,0.08);
+    }
+
+    .leaderboard-table tr:hover td {
+      background: rgba(74,111,165,0.05);
+    }
+
+    .rank {
+      font-family: 'Cinzel', serif;
+      font-weight: 600;
+      color: var(--silver);
+    }
+
+    .rank-1 { color: #f5d060; }
+    .rank-2 { color: #c0c8d0; }
+    .rank-3 { color: #c07840; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      border-radius: 2px;
+      font-family: 'Cinzel', serif;
+    }
+
+    .badge-loup { background: rgba(100,40,40,0.4); border: 1px solid rgba(180,60,60,0.3); color: #e08080; }
+    .badge-villageois { background: rgba(40,70,100,0.4); border: 1px solid rgba(60,120,180,0.3); color: #80b0d0; }
+    .badge-voyante { background: rgba(80,40,100,0.4); border: 1px solid rgba(140,60,180,0.3); color: #c080e0; }
+
+    /* ---- COMMUNITY ---- */
+    #community {
+      border-top: 1px solid rgba(74,111,165,0.15);
+    }
+
+    .forum-list {
+      margin-top: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .forum-post {
+      background: linear-gradient(135deg, var(--deep), var(--fog));
+      border: 1px solid rgba(74,111,165,0.15);
+      padding: 1.4rem 1.8rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: border-color 0.3s;
+      cursor: pointer;
+    }
+
+    .forum-post:hover { border-color: rgba(74,111,165,0.4); }
+
+    .post-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.85rem;
+      color: var(--silver);
+      margin-bottom: 0.3rem;
+    }
+
+    .post-meta {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .post-replies {
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-align: right;
+    }
+
+    /* ---- CTA ---- */
+    #cta {
+      text-align: center;
+      border-top: 1px solid rgba(74,111,165,0.15);
+      padding-bottom: 8rem;
+    }
+
+    #cta .section-label { justify-content: center; }
+    #cta .section-label::before { display: none; }
+
+    #cta p {
+      font-size: 1rem;
+      line-height: 1.8;
+      color: var(--text-dim);
+      max-width: 500px;
+      margin: 0 auto 2.5rem;
+    }
+
+    /* ---- FOOTER ---- */
+    footer {
+      background: var(--night);
+      border-top: 1px solid rgba(74,111,165,0.12);
+      padding: 3rem 4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-logo {
+      font-family: 'Cinzel Decorative', serif;
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .footer-links a:hover { color: var(--silver); }
+
+    .footer-copy {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+    }
+
+    /* ---- DIVIDER ---- */
+    .divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(74,111,165,0.4), transparent);
+      margin: 0;
+    }
+
+    /* Players count badge */
+    .players-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Cinzel', serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      border: 1px solid rgba(74,111,165,0.3);
+      padding: 0.4rem 1rem;
+      margin-bottom: 1.5rem;
+      animation: badgePulse 3s infinite;
+    }
+
+    .players-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #4aff80;
+      box-shadow: 0 0 6px #4aff80;
+      animation: dotBlink 1.5s infinite;
+    }
+
+    @keyframes dotBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    @keyframes badgePulse {
+      0%, 100% { border-color: rgba(74,111,165,0.3); }
+      50% { border-color: rgba(74,111,165,0.6); }
+    }
+
+    /* Responsive */
+    @media (max-width: 800px) {
+      nav { padding: 1rem 1.5rem; }
+      .nav-links { gap: 1.2rem; }
+      section { padding: 4rem 1.5rem; }
+      #about { grid-template-columns: 1fr; gap: 3rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      footer { flex-direction: column; gap: 1.5rem; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">LYCAN</div>
+  <ul class="nav-links">
+    <li><a href="#about">Le Jeu</a></li>
+    <li><a href="#features">Fonctionnalités</a></li>
+    <li><a href="#leaderboard">Classements</a></li>
+    <li><a href="#community">Communauté</a></li>
+    <li><a href="#cta">Jouer</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section id="hero" style="padding:0; max-width:unset;">
+  <div class="hero-sky"></div>
+
+  <!-- Stars -->
+  <div class="stars" id="stars"></div>
+
+  <!-- Moon -->
+  <div class="moon"></div>
+
+  <!-- Forest -->
+  <div class="forest-scene">
+    <!-- Fog -->
+    <div class="fog-layer"></div>
+    <div class="fog-layer fog-layer-2"></div>
+
+    <!-- Village -->
+    <div class="village">
+      <!-- House 1 (small) -->
+      <div class="house" style="--wf:5s">
+        <div class="house-roof" style="border-left-width:22px;border-right-width:22px;border-bottom-width:28px"></div>
+        <div class="house-body" style="width:44px;height:32px">
+          <div class="house-window" style="width:10px;height:10px;top:8px;left:8px;--wf:5s"></div>
+          <div class="house-window" style="width:10px;height:10px;top:8px;right:8px;--wf:7s"></div>
+        </div>
+      </div>
+      <!-- House 2 (large) -->
+      <div class="house" style="--wf:3s">
+        <div class="house-roof" style="border-left-width:30px;border-right-width:30px;border-bottom-width:38px"></div>
+        <div class="house-body" style="width:60px;height:44px">
+          <div class="house-window" style="width:12px;height:14px;top:10px;left:10px;--wf:3s"></div>
+          <div class="house-window" style="width:12px;height:14px;top:10px;right:10px;--wf:6s"></div>
+        </div>
+      </div>
+      <!-- House 3 (tall) -->
+      <div class="house" style="--wf:4s">
+        <div class="house-roof" style="border-left-width:18px;border-right-width:18px;border-bottom-width:40px"></div>
+        <div class="house-body" style="width:36px;height:52px">
+          <div class="house-window" style="width:8px;height:8px;top:8px;left:7px;--wf:4s"></div>
+          <div class="house-window" style="width:8px;height:8px;top:8px;right:7px;--wf:8s"></div>
+          <div class="house-window" style="width:8px;height:8px;top:26px;left:7px;--wf:2s"></div>
+        </div>
+      </div>
+      <!-- House 4 (medium) -->
+      <div class="house" style="--wf:6s">
+        <div class="house-roof" style="border-left-width:25px;border-right-width:25px;border-bottom-width:32px"></div>
+        <div class="house-body" style="width:50px;height:38px">
+          <div class="house-window" style="width:10px;height:12px;top:9px;left:8px;--wf:6s"></div>
+          <div class="house-window" style="width:10px;height:12px;top:9px;right:8px;--wf:9s"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Campfire -->
+    <div class="campfire">
+      <div style="position:relative;width:30px;height:40px;margin:0 auto">
+        <div class="flame" style="width:10px;height:22px;left:10px;background:linear-gradient(to top,#c04010,#e08020);--fd:0.5s"></div>
+        <div class="flame" style="width:7px;height:16px;left:4px;bottom:2px;background:linear-gradient(to top,#a03008,#d06018);--fd:0.7s"></div>
+        <div class="flame" style="width:7px;height:16px;right:4px;bottom:2px;background:linear-gradient(to top,#c05010,#f09030);--fd:0.4s"></div>
+        <div class="flame" style="width:5px;height:12px;left:8px;background:linear-gradient(to top,#e09020,#ffd060);--fd:0.35s"></div>
+      </div>
+      <div class="fire-base"></div>
+      <div class="fire-glow"></div>
+    </div>
+
+    <!-- Trees SVG -->
+    <svg class="trees" viewBox="0 0 1440 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Back trees (lighter) -->
+      <g fill="#0a1020" opacity="0.8">
+        <polygon points="100,280 130,160 160,280"/>
+        <polygon points="115,280 145,120 175,280"/>
+        <polygon points="240,280 270,150 300,280"/>
+        <polygon points="350,280 385,100 420,280"/>
+        <polygon points="460,280 495,140 530,280"/>
+        <polygon points="580,280 610,110 640,280"/>
+        <polygon points="700,280 730,130 760,280"/>
+        <polygon points="820,280 855,105 890,280"/>
+        <polygon points="950,280 980,145 1010,280"/>
+        <polygon points="1060,280 1095,115 1130,280"/>
+        <polygon points="1180,280 1210,130 1240,280"/>
+        <polygon points="1300,280 1330,150 1360,280"/>
+        <polygon points="1380,280 1410,120 1440,280"/>
+      </g>
+      <!-- Front trees (darker) -->
+      <g fill="#06090f">
+        <polygon points="0,300 40,140 80,300"/>
+        <polygon points="60,300 100,100 140,300"/>
+        <polygon points="180,300 220,120 260,300"/>
+        <polygon points="290,300 340,80 390,300"/>
+        <polygon points="420,300 465,110 510,300"/>
+        <polygon points="540,300 580,90 620,300"/>
+        <polygon points="650,300 695,70 740,300"/>
+        <polygon points="770,300 810,95 850,300"/>
+        <polygon points="880,300 925,75 970,300"/>
+        <polygon points="1000,300 1040,100 1080,300"/>
+        <polygon points="1110,300 1155,85 1200,300"/>
+        <polygon points="1230,300 1270,110 1310,300"/>
+        <polygon points="1340,300 1385,90 1430,300"/>
+        <polygon points="1400,300 1440,115 1440,300"/>
+      </g>
+      <!-- Ground -->
+      <rect x="0" y="270" width="1440" height="30" fill="#06090f"/>
+    </svg>
+  </div>
+
+  <!-- Hero Text -->
+  <div class="hero-content">
+    <!-- Logo SVG -->
+    <svg class="logo-svg" width="120" height="80" viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Left pitchfork -->
+      <g stroke="#a8b8d0" stroke-width="2" stroke-linecap="round">
+        <line x1="22" y1="72" x2="22" y2="20"/>
+        <line x1="22" y1="20" x2="18" y2="10"/>
+        <line x1="22" y1="20" x2="22" y2="10"/>
+        <line x1="22" y1="20" x2="26" y2="10"/>
+        <line x1="18" y1="10" x2="18" y2="16"/>
+        <line x1="26" y1="10" x2="26" y2="16"/>
+      </g>
+      <!-- Right pitchfork -->
+      <g stroke="#a8b8d0" stroke-width="2" stroke-linecap="round">
+        <line x1="98" y1="72" x2="98" y2="20"/>
+        <line x1="98" y1="20" x2="94" y2="10"/>
+        <line x1="98" y1="20" x2="98" y2="10"/>
+        <line x1="98" y1="20" x2="102" y2="10"/>
+        <line x1="94" y1="10" x2="94" y2="16"/>
+        <line x1="102" y1="10" x2="102" y2="16"/>
+      </g>
+      <!-- Left wolf silhouette (disguised as villager with hood) -->
+      <g fill="#8a9eb8">
+        <!-- body -->
+        <ellipse cx="38" cy="62" rx="10" ry="12"/>
+        <!-- head with hood -->
+        <circle cx="38" cy="46" r="9"/>
+        <!-- hood top -->
+        <path d="M30 44 Q38 32 46 44 Q42 38 38 36 Q34 38 30 44Z" fill="#6a7e98"/>
+        <!-- wolf ear peeking under hood -->
+        <path d="M33 39 L30 33 L36 37Z" fill="#8a9eb8"/>
+        <path d="M43 39 L46 33 L40 37Z" fill="#8a9eb8"/>
+        <!-- snout -->
+        <ellipse cx="38" cy="50" rx="4" ry="3" fill="#7a8ea8"/>
+        <!-- eye glow -->
+        <circle cx="35" cy="46" r="1.5" fill="#e0c060" opacity="0.9"/>
+        <circle cx="41" cy="46" r="1.5" fill="#e0c060" opacity="0.9"/>
+      </g>
+      <!-- Right wolf silhouette -->
+      <g fill="#8a9eb8">
+        <ellipse cx="82" cy="62" rx="10" ry="12"/>
+        <circle cx="82" cy="46" r="9"/>
+        <path d="M74 44 Q82 32 90 44 Q86 38 82 36 Q78 38 74 44Z" fill="#6a7e98"/>
+        <path d="M77 39 L74 33 L80 37Z" fill="#8a9eb8"/>
+        <path d="M87 39 L90 33 L84 37Z" fill="#8a9eb8"/>
+        <ellipse cx="82" cy="50" rx="4" ry="3" fill="#7a8ea8"/>
+        <circle cx="79" cy="46" r="1.5" fill="#e0c060" opacity="0.9"/>
+        <circle cx="85" cy="46" r="1.5" fill="#e0c060" opacity="0.9"/>
+      </g>
+      <!-- Center moon / claw mark -->
+      <circle cx="60" cy="40" r="14" fill="none" stroke="rgba(168,184,208,0.3)" stroke-width="1"/>
+      <circle cx="60" cy="40" r="10" fill="rgba(20,40,80,0.6)"/>
+      <path d="M54 36 Q60 28 66 36 Q60 32 54 36Z" fill="#c8d8f0" opacity="0.8"/>
+    </svg>
+
+    <div class="players-badge">
+      <div class="players-dot"></div>
+      247 joueurs en ligne
+    </div>
+
+    <h1>LYCAN</h1>
+    <p class="hero-tagline">Le Loup-Garou — Réinventé en ligne · 6 à 18 joueurs</p>
+
+    <div class="hero-btns">
+      <a href="login.html" class="btn btn-primary">Jouer maintenant</a>
+      <a href="#about" class="btn btn-outline">Découvrir</a>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>Descendre</span>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 3v10M4 9l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="about-text">
+    <div class="section-label">Le Jeu</div>
+    <h2 class="section-title">Le village se réveille.<br/>Mais certains ne sont pas ce qu'ils semblent.</h2>
+    <p>
+      <strong>Lycan</strong> est une réinvention en ligne du célèbre jeu <strong>Loup-Garou</strong>.
+      De 6 à 18 joueurs s'affrontent dans des parties intenses où la ruse, l'éloquence et la méfiance décident de tout.
+    </p>
+    <p>
+      Chaque nuit, les loups-garous choisissent leur proie. Chaque jour, le village délibère.
+      Qui est l'ennemi ? Saurez-vous mentir assez bien — ou démasquer l'imposteur à temps ?
+    </p>
+    <div style="margin-top:2rem">
+      <a href="login.html" class="btn btn-primary">Créer une partie</a>
+    </div>
+  </div>
+
+  <div class="about-visual">
+    <div class="roles-grid">
+      <div class="role-card">
+        <div class="role-icon">🐺</div>
+        <div class="role-name">Loup-Garou</div>
+        <div class="role-desc">Éliminez les villageois chaque nuit sans vous faire démasquer.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon">🏘️</div>
+        <div class="role-name">Villageois</div>
+        <div class="role-desc">Trouvez les loups avant qu'il ne soit trop tard. La parole est votre seule arme.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon">🔮</div>
+        <div class="role-name">Voyante</div>
+        <div class="role-desc">Chaque nuit, révélez l'identité secrète d'un joueur.</div>
+      </div>
+      <div class="role-card">
+        <div class="role-icon">💉</div>
+        <div class="role-name">Sorcière</div>
+        <div class="role-desc">Utilisez votre potion de vie ou de mort au moment crucial.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">Fonctionnalités</div>
+  <h2 class="section-title">Conçu pour l'expérience ultime</h2>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-num">01</div>
+      <div class="feature-title">Parties en temps réel</div>
+      <div class="feature-text">6 à 18 joueurs connectés simultanément. Discussions vocales ou texte, votes en direct, rythme haletant.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">02</div>
+      <div class="feature-title">Rôles multiples</div>
+      <div class="feature-text">Plus de 12 rôles uniques — Chasseur, Cupidon, Idiot du village, Ancien… Chaque partie est différente.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">03</div>
+      <div class="feature-title">Lobbies personnalisés</div>
+      <div class="feature-text">Créez une salle privée avec vos amis ou rejoignez une partie publique en un clic.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">04</div>
+      <div class="feature-title">Classements & Stats</div>
+      <div class="feature-text">Suivez votre taux de victoire, vos rôles favoris et votre progression sur le tableau global.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">05</div>
+      <div class="feature-title">Communauté active</div>
+      <div class="feature-text">Forum, stratégies partagées, événements saisonniers et tournois organisés chaque mois.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-num">06</div>
+      <div class="feature-title">Gratuit & accessible</div>
+      <div class="feature-text">Aucun téléchargement. Jouez directement depuis votre navigateur sur PC, tablette ou mobile.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- LEADERBOARD -->
+<section id="leaderboard">
+  <div class="section-label">Classements</div>
+  <h2 class="section-title">Les Meilleurs Lycans</h2>
+
+  <table class="leaderboard-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Joueur</th>
+        <th>Rôle favori</th>
+        <th>Victoires</th>
+        <th>Parties</th>
+        <th>Taux</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="rank rank-1">01</span></td>
+        <td>NocteMbr</td>
+        <td><span class="badge badge-loup">🐺 Loup</span></td>
+        <td>342</td>
+        <td>410</td>
+        <td>83%</td>
+      </tr>
+      <tr>
+        <td><span class="rank rank-2">02</span></td>
+        <td>Isabelyne</td>
+        <td><span class="badge badge-voyante">🔮 Voyante</span></td>
+        <td>298</td>
+        <td>371</td>
+        <td>80%</td>
+      </tr>
+      <tr>
+        <td><span class="rank rank-3">03</span></td>
+        <td>ShadowFang</td>
+        <td><span class="badge badge-loup">🐺 Loup</span></td>
+        <td>274</td>
+        <td>356</td>
+        <td>77%</td>
+      </tr>
+      <tr>
+        <td><span class="rank">04</span></td>
+        <td>Veilleur_77</td>
+        <td><span class="badge badge-villageois">🏘️ Villageois</span></td>
+        <td>251</td>
+        <td>340</td>
+        <td>74%</td>
+      </tr>
+      <tr>
+        <td><span class="rank">05</span></td>
+        <td>MireilleV</td>
+        <td><span class="badge badge-voyante">🔮 Voyante</span></td>
+        <td>238</td>
+        <td>325</td>
+        <td>73%</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="divider"></div>
+
+<!-- COMMUNITY -->
+<section id="community">
+  <div class="section-label">Communauté</div>
+  <h2 class="section-title">Le Forum du Village</h2>
+
+  <div class="forum-list">
+    <div class="forum-post">
+      <div>
+        <div class="post-title">💡 Stratégies avancées pour le rôle de Voyante</div>
+        <div class="post-meta">Par Isabelyne · il y a 2 heures</div>
+      </div>
+      <div class="post-replies">47 réponses →</div>
+    </div>
+    <div class="forum-post">
+      <div>
+        <div class="post-title">🐺 Comment bluffer efficacement en tant que Loup ?</div>
+        <div class="post-meta">Par NocteMbr · il y a 5 heures</div>
+      </div>
+      <div class="post-replies">83 réponses →</div>
+    </div>
+    <div class="forum-post">
+      <div>
+        <div class="post-title">🏆 Tournoi mensuel — Inscriptions ouvertes !</div>
+        <div class="post-meta">Par Admin_Lycan · il y a 1 jour</div>
+      </div>
+      <div class="post-replies">121 réponses →</div>
+    </div>
+    <div class="forum-post">
+      <div>
+        <div class="post-title">🔮 Nouveau rôle en test : L'Oracle Noir</div>
+        <div class="post-meta">Par Dev_Lycan · il y a 3 jours</div>
+      </div>
+      <div class="post-replies">64 réponses →</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CTA -->
+<section id="cta">
+  <div class="section-label">Rejoindre</div>
+  <h2 class="section-title">La nuit commence bientôt.</h2>
+  <p>Créez votre compte gratuitement et rejoignez des centaines de joueurs dans les ombres du village.</p>
+  <div class="hero-btns" style="justify-content:center">
+    <a href="login.html" class="btn btn-primary">Créer un compte</a>
+    <a href="login.html" class="btn btn-outline">Jouer en invité</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">LYCAN</div>
+  <ul class="footer-links">
+    <li><a href="#">CGU</a></li>
+    <li><a href="#">Confidentialité</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Discord</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 Lycan — Tous droits réservés</div>
+</footer>
+
+<script>
+  // Generate stars
+  const starsContainer = document.getElementById('stars');
+  for (let i = 0; i < 180; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    star.style.cssText = `
+      width: ${size}px;
+      height: ${size}px;
+      top: ${Math.random() * 65}%;
+      left: ${Math.random() * 100}%;
+      --op: ${Math.random() * 0.5 + 0.3};
+      --d: ${Math.random() * 4 + 2}s;
+      --delay: ${Math.random() * 4}s;
+    `;
+    starsContainer.appendChild(star);
+  }
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  });
+
+  // Fade-in on scroll
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.feature-card, .role-card, .forum-post').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(el);
+  });
+</script>
+</body>
+</html>
